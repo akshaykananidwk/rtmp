@@ -1,0 +1,6 @@
+<details><summary>Do I need to configure multiple destinations in OBS?</summary><p class="muted">No. OBS sends one stream to our RTMP server. Destinations are configured once in the dashboard.</p></details>
+<details><summary>Does it work with vMix, Streamlabs or a hardware encoder?</summary><p class="muted">Yes — anything that can publish RTMP to a custom server with a stream key.</p></details>
+<details><summary>What happens if one platform disconnects?</summary><p class="muted">Only that destination reconnects with exponential backoff. The other destinations keep streaming.</p></details>
+<details><summary>Is Instagram Live supported?</summary><p class="muted">Instagram has no official public API for creating Live broadcasts. You can paste the RTMPS URL/key from Instagram Live Producer (professional accounts). We do not claim one-click Instagram Live.</p></details>
+<details><summary>Can I run this on shared hosting?</summary><p class="muted">The web application runs on Apache + PHP + MySQL. The RTMP/streaming engine (MediaMTX + FFmpeg) requires a VPS.</p></details>
+<details><summary>How do updates work?</summary><p class="muted">Configure your GitHub repository once. The system checks for updates, backs up files + database, installs, migrates, health-checks and rolls back automatically on failure.</p></details>

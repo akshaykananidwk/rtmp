@@ -1,0 +1,2 @@
+@php($s = strtolower((string) $status))
+<span class="badge badge-{{ $s }}">@if(in_array($s, ['live','connected','pass','completed','ok']))🟢 @elseif(in_array($s, ['connecting','reconnecting','pending','preparing','warn','warning','waiting_for_source','detected','running']))🟡 @elseif(in_array($s, ['failed','error','fail','critical','rolled_back','missed']))🔴 @else⚪ @endif{{ str_replace('_', ' ', $s) }}</span>

@@ -1,0 +1,40 @@
+@extends('layouts.admin')
+@section('title', 'Live Stream')
+@section('content')
+@php($p = $payload)
+<div data-status-url="{{ route('admin.dashboard.status') }}" data-interval="4000" data-initial='@json($p)'></div>
+<div class="grid grid-2" style="margin-bottom:18px">
+  <div class="card" style="text-align:center">
+    <span data-live-indicator class="live-indicator {{ $p['live'] ? 'on' : 'off' }}"><span class="dot"></span> {{ $p['live'] ? 'LIVE' : 'OFFLINE' }}</span>
+    <div style="margin:10px 0" class="muted"><span data-field="endpoint">{{ $p['session']['endpoint'] ?? '—' }}</span> · <span data-field="duration">00:00:00</span> · <span data-field="resolution">—</span> @ <span data-field="fps">—</span> fps · <span data-field="codec">—</span></div>
+    <div class="muted small">↓ <span data-field="incoming">—</span> · ↑ <span data-field="outgoing">—</span> · Recording: <span data-field="recording">—</span></div>
+    @can('streams.control')
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px">
+      <form method="post" action="{{ route('admin.live.start') }}">@csrf<button class="btn btn-success btn-lg" {{ $p['live'] ? '' : 'disabled' }}>▶ START LIVE</button></form>
+      <form method="post" action="{{ route('admin.live.stop') }}" data-confirm="Stop distribution to ALL destinations?">@csrf<button class="btn btn-danger btn-lg" {{ $p['live'] ? '' : 'disabled' }}>■ STOP LIVE</button></form>
+      <a class="btn btn-outline btn-lg" href="{{ route('admin.live') }}">↻ REFRESH STATUS</a>
+      <a class="btn btn-outline btn-lg" href="{{ route('admin.logs') }}">📜 VIEW LOGS</a>
+    </div>
+    @if(! $p['live'])<p class="small muted" style="margin-top:12px">Start streaming from OBS first. The source will appear here automatically, then press START LIVE to distribute.</p>@endif
+    @endcan
+  </div>
+  <div class="card"><div class="card-header"><h3>Destinations</h3><a class="btn btn-sm btn-outline" href="{{ route('admin.destinations.index') }}">Manage</a></div>
+    <div data-destinations data-can-control="{{ auth()->user()->can('streams.control') ? 1 : 0 }}" data-restart-url="{{ route('admin.live.destination.restart', '__ID__') }}" data-stop-url="{{ route('admin.live.destination.stop', '__ID__') }}"><div class="empty">No distribution running</div></div>
+    @can('streams.control')
+    @if($p['live'] && $destinations->count())
+    <details style="margin-top:14px"><summary class="small muted" style="cursor:pointer">Start only selected destinations</summary>
+      <form method="post" action="{{ route('admin.live.start') }}" style="margin-top:10px">@csrf
+        @foreach($destinations as $d)<label class="check" style="margin-bottom:6px"><input type="checkbox" name="destination_ids[]" value="{{ $d->id }}" {{ $d->is_enabled ? 'checked' : 'disabled' }}> {{ $d->name }} <span class="pill">{{ $d->platform }}</span></label>@endforeach
+        <button class="btn btn-sm btn-primary" style="margin-top:8px">Start selected</button>
+      </form>
+    </details>
+    @endif
+    @endcan
+  </div>
+</div>
+<div class="card"><div class="card-header"><h3>Live logs</h3><span class="small muted">auto-refresh</span></div>
+  <div class="log-box" data-logs-url="{{ route('admin.live.logs') }}" data-after="{{ $logs->last()?->id ?? 0 }}">
+    @foreach($logs as $l)<div class="log-line log-{{ $l->level }}"><span class="log-time">{{ $l->created_at->format('H:i:s') }}</span><span>{{ $l->message }}</span></div>@endforeach
+  </div>
+</div>
+@endsection

@@ -1,0 +1,9 @@
+@extends('layouts.public')
+@section('content')
+<section class="section container"><h2>Features</h2><p class="lead">Everything needed to run multi-platform live streaming professionally.</p>
+<div class="grid grid-2">
+@foreach([['Live dashboard','Live/offline indicator, bitrate in/out, FPS, resolution, codec, duration, destination summary and viewers where APIs allow.'],['RTMP server management','Create, regenerate, revoke and disable stream keys. Copy server + key with one click. OBS / vMix / Streamlabs instructions.'],['Destinations','YouTube (official API), Facebook Pages (Graph API), Twitch (Helix), LinkedIn/Instagram via their RTMP tools, and unlimited Custom RTMP.'],['Health & retries','Connected → Connecting → Live → Reconnecting → Failed states with retry counts, last error and exponential backoff.'],['Scheduling','Date, time, timezone, destinations, recording, auto-start, auto-stop and notes. Runs via Laravel Scheduler + Queue.'],['Recording library','MP4 recordings with duration, size, resolution, download (authorized) and retention cleanup. Local or S3.'],['Analytics','Daily streams, duration, destination success rate, errors and bandwidth.'],['Notifications','E-mail, dashboard and optional WhatsApp alerts for stream, destination, update and backup events.'],['GitHub auto-update','Check → show version/commit/changes → backup → download → verify → install → migrate → health → activate; automatic rollback.'],['Backups','Manual + scheduled files/database backups with checksums, optional encryption, download and restore.'],['Security','Roles/policies, 2FA (TOTP), login throttling, encrypted secrets, CSP & security headers, audit + error logs with reference IDs.'],['API & webhooks','Versioned REST API (/api/v1) with Sanctum tokens; signed webhook endpoints for Meta and YouTube.']] as [$t,$d])
+<div class="card"><h3>{{ $t }}</h3><p class="muted">{{ $d }}</p></div>
+@endforeach
+</div></section>
+@endsection

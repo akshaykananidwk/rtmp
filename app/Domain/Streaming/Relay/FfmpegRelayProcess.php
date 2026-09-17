@@ -1,0 +1,143 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\Streaming\Relay;
+
+use App\Support\SecretMasker;
+use Symfony\Component\Process\Process;
+
+/**
+ * One FFmpeg process copying the ingest stream to a single RTMP target
+ * (or to a recording file). Wraps Symfony Process for async control.
+ */
+final class FfmpegRelayProcess
+{
+    private Process $process;
+
+    private string $progressBuffer = '';
+
+    private int $bytesOut = 0;
+
+    private int $lastBytes = 0;
+
+    private float $lastBytesAt = 0.0;
+
+    private int $bitrateKbps = 0;
+
+    private string $stderrTail = '';
+
+    public function __construct(
+        public readonly string $id,
+        public readonly string $kind, // relay | record
+        private readonly string $sourceUrl,
+        private readonly string $targetUrl,
+        private readonly array $extraArgs = [],
+    ) {
+        $bin = (string) config('akstream.streaming.ffmpeg', 'ffmpeg');
+        $isFile = $kind === 'record';
+
+        $cmd = [
+            $bin, '-hide_banner', '-nostdin', '-loglevel', 'warning', '-nostats',
+            '-rw_timeout', '15000000', '-i', $this->sourceUrl,
+            '-c', 'copy',
+        ];
+
+        if ($isFile) {
+            $cmd = array_merge($cmd, ['-movflags', '+faststart+frag_keyframe+empty_moov', '-f', 'mp4']);
+        } else {
+            $cmd = array_merge($cmd, ['-bsf:a', 'aac_adtstoasc', '-f', 'flv', '-flvflags', 'no_duration_filesize']);
+        }
+
+        $cmd = array_merge($cmd, $this->extraArgs, ['-progress', 'pipe:1', $this->targetUrl]);
+
+        $this->process = new Process($cmd);
+        $this->process->setTimeout(null);
+        $this->process->setIdleTimeout(null);
+    }
+
+    public function start(): void
+    {
+        $this->lastBytesAt = microtime(true);
+        $this->process->start();
+    }
+
+    public function pid(): ?int
+    {
+        return $this->process->getPid();
+    }
+
+    public function isRunning(): bool
+    {
+        return $this->process->isRunning();
+    }
+
+    public function exitCode(): ?int
+    {
+        return $this->process->getExitCode();
+    }
+
+    /** Read incremental progress output. Returns true if bytes advanced. */
+    public function poll(): bool
+    {
+        $out = $this->process->getIncrementalOutput();
+        $err = $this->process->getIncrementalErrorOutput();
+        if ($err !== '') {
+            $this->stderrTail = substr($this->stderrTail.$err, -2000);
+        }
+        if ($out === '') {
+            return false;
+        }
+
+        $this->progressBuffer .= $out;
+        $advanced = false;
+        foreach (explode("\n", $this->progressBuffer) as $line) {
+            if (str_starts_with($line, 'total_size=')) {
+                $v = (int) substr($line, 11);
+                if ($v > $this->bytesOut) {
+                    $this->bytesOut = $v;
+                    $advanced = true;
+                }
+            }
+        }
+        // keep only unterminated tail
+        $pos = strrpos($this->progressBuffer, "\n");
+        $this->progressBuffer = $pos === false ? $this->progressBuffer : substr($this->progressBuffer, $pos + 1);
+
+        $now = microtime(true);
+        if ($now - $this->lastBytesAt >= 2.0) {
+            $delta = $this->bytesOut - $this->lastBytes;
+            $this->bitrateKbps = (int) round(($delta * 8 / 1000) / max(0.001, $now - $this->lastBytesAt));
+            $this->lastBytes = $this->bytesOut;
+            $this->lastBytesAt = $now;
+        }
+
+        return $advanced;
+    }
+
+    public function bytesOut(): int
+    {
+        return $this->bytesOut;
+    }
+
+    public function bitrateKbps(): int
+    {
+        return max(0, $this->bitrateKbps);
+    }
+
+    public function lastError(): string
+    {
+        $tail = trim($this->stderrTail);
+        $lines = array_values(array_filter(explode("\n", $tail)));
+        $msg = $lines ? end($lines) : ('ffmpeg exited with code '.($this->exitCode() ?? '?'));
+
+        return SecretMasker::maskString(mb_substr($msg, 0, 500));
+    }
+
+    public function stop(float $timeout = 5.0): void
+    {
+        if ($this->process->isRunning()) {
+            $this->process->stop($timeout, defined('SIGTERM') ? SIGTERM : 15);
+        }
+    }
+}

@@ -1,0 +1,24 @@
+@extends('layouts.admin')
+@section('title', 'My Profile')
+@section('content')
+<div class="grid grid-2">
+  <div class="card"><h3>Profile</h3><form method="post" action="{{ route('admin.profile.update') }}">@csrf @method('PUT')
+    <div class="field"><label>Name</label><input type="text" name="name" value="{{ old('name', $user->name) }}" required></div><div class="field"><label>E-mail</label><input type="email" name="email" value="{{ old('email', $user->email) }}" required></div><div class="field"><label>Phone (WhatsApp)</label><input type="text" name="phone" value="{{ old('phone', $user->phone) }}"></div><div class="field"><label>Timezone</label><select name="timezone">@foreach(\DateTimeZone::listIdentifiers() as $tz)<option value="{{ $tz }}" {{ $user->timezone === $tz ? 'selected' : '' }}>{{ $tz }}</option>@endforeach</select></div><button class="btn btn-primary">Save</button></form>
+    <div class="divider"></div><h3>Change password</h3><form method="post" action="{{ route('admin.profile.password') }}">@csrf @method('PUT')<div class="field"><label>Current password</label><input type="password" name="current_password" required autocomplete="current-password"></div><div class="field"><label>New password</label><input type="password" name="password" required autocomplete="new-password"></div><div class="field"><label>Confirm</label><input type="password" name="password_confirmation" required></div><button class="btn btn-primary">Change password</button></form>
+  </div>
+  <div>
+    <div class="card" style="margin-bottom:18px"><h3>Two-factor authentication (TOTP)</h3>
+      @if($recoveryCodes)<div class="alert alert-warning"><strong>Recovery codes (save them now):</strong><div class="mono" style="margin-top:6px">@foreach($recoveryCodes as $c)<div>{{ $c }}</div>@endforeach</div></div>@endif
+      @if($user->hasTwoFactorEnabled())<p>✅ Enabled since {{ $user->two_factor_confirmed_at->format('d M Y') }}.</p><form method="post" action="{{ route('admin.profile.two-factor.disable') }}" data-confirm="Disable 2FA?">@csrf @method('DELETE')<div class="field"><label>Current password</label><input type="password" name="current_password" required></div><button class="btn btn-danger btn-sm">Disable 2FA</button></form>
+      @elseif($pendingSecret)<p class="muted small">Add this secret to Google Authenticator / Authy (manual entry), then enter the 6-digit code.</p><div class="code">{{ chunk_split($pendingSecret, 4, ' ') }}</div><div class="small muted mono" style="word-break:break-all;margin-bottom:10px">{{ $pendingUri }}</div><form method="post" action="{{ route('admin.profile.two-factor.confirm') }}">@csrf<div class="field"><label>Code</label><input type="text" name="code" inputmode="numeric" required></div><button class="btn btn-primary btn-sm">Confirm & enable</button></form>
+      @else<p class="muted">Protect your account with an authenticator app.</p><form method="post" action="{{ route('admin.profile.two-factor.enable') }}">@csrf<button class="btn btn-primary btn-sm">Enable 2FA</button></form>@endif
+    </div>
+    <div class="card"><h3>API tokens</h3>
+      @if($newToken)<div class="alert alert-warning"><strong>New token (copy now, shown once):</strong><div class="copy-row" style="margin-top:6px"><input type="text" id="tok" value="{{ $newToken }}" readonly><button class="btn btn-sm btn-cyan" data-copy="#tok">Copy</button></div></div>@endif
+      <form method="post" action="{{ route('admin.profile.token.create') }}"><div class="form-row">@csrf<div class="field"><label>Token name</label><input type="text" name="name" required placeholder="OBS controller"></div><div class="field"><label>Abilities</label><label class="check"><input type="checkbox" name="abilities[]" value="read" checked> read</label><label class="check"><input type="checkbox" name="abilities[]" value="control"> control</label>@if($user->isAdmin())<label class="check"><input type="checkbox" name="abilities[]" value="manage"> manage</label>@endif</div></div><button class="btn btn-primary btn-sm">Create token</button></form>
+      <table style="margin-top:12px"><thead><tr><th>Name</th><th>Abilities</th><th>Last used</th><th></th></tr></thead><tbody>@forelse($tokens as $t)<tr><td>{{ $t->name }}</td><td class="small">{{ implode(', ', $t->abilities) }}</td><td class="small muted">{{ $t->last_used_at?->diffForHumans() ?? 'never' }}</td><td><form method="post" action="{{ route('admin.profile.token.revoke', $t->id) }}">@csrf @method('DELETE')<button class="btn btn-sm btn-outline">Revoke</button></form></td></tr>@empty<tr><td colspan="4" class="muted">No tokens</td></tr>@endforelse</tbody></table>
+      <p class="small muted" style="margin-top:10px">Use as <span class="mono">Authorization: Bearer &lt;token&gt;</span> against <span class="mono">{{ url('/api/v1') }}</span>. See docs/API.md.</p>
+    </div>
+  </div>
+</div>
+@endsection
