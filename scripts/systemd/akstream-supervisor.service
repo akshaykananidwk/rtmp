@@ -1,0 +1,17 @@
+[Unit]
+Description=AK Computer stream supervisor (FFmpeg relays + recording)
+After=network.target mediamtx.service mysql.service redis.service
+Wants=mediamtx.service
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/akstream/current
+ExecStart=/usr/bin/php artisan stream:supervisor --interval=2
+Restart=always
+RestartSec=3
+KillSignal=SIGTERM
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target

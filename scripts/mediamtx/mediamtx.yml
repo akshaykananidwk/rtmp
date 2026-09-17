@@ -1,0 +1,54 @@
+###############################################################################
+# MediaMTX configuration for AK COMPUTER – ONE LIVE EVERYWHERE
+# Install: /etc/mediamtx/mediamtx.yml   (MediaMTX >= 1.9)
+#
+# Replace __APP_URL__ with your application URL (https://stream.example.com)
+# and __ENGINE_SECRET__ with STREAM_ENGINE_SECRET from the application .env
+###############################################################################
+logLevel: info
+logDestinations: [stdout]
+
+# --- Control API (used by the PHP application; keep on localhost) ------------
+api: yes
+apiAddress: 127.0.0.1:9997
+
+# --- Ingest protocols --------------------------------------------------------
+rtmp: yes
+rtmpAddress: :1935
+rtmps: no
+rtsp: no
+srt: yes
+srtAddress: :8890
+webrtc: no
+
+# --- HLS preview (only reachable from localhost / reverse proxy) --------------
+hls: yes
+hlsAddress: 127.0.0.1:8888
+hlsVariant: lowLatency
+hlsSegmentCount: 7
+hlsSegmentDuration: 1s
+hlsAllowOrigin: '*'
+
+# --- Authentication: every publish/read is validated by the application -------
+authMethod: http
+authHTTPAddress: __APP_URL__/api/internal/engine/auth?secret=__ENGINE_SECRET__
+authHTTPExclude:
+  - action: api
+  - action: metrics
+  - action: pprof
+
+# --- Path defaults: hooks notify the application when a source starts/stops ---
+pathDefaults:
+  runOnReady: >
+    curl -s -X POST -H "X-Engine-Secret: __ENGINE_SECRET__"
+    -d "path=$MTX_PATH" -d "node=media-1" __APP_URL__/api/internal/engine/ready
+  runOnReadyRestart: no
+  runOnNotReady: >
+    curl -s -X POST -H "X-Engine-Secret: __ENGINE_SECRET__"
+    -d "path=$MTX_PATH" __APP_URL__/api/internal/engine/not-ready
+
+paths:
+  # OBS publishes to rtmp://HOST/live/<STREAM_KEY>  → MediaMTX path "live/<STREAM_KEY>"
+  "~^live/.+$":
+    source: publisher
+    sourceOnDemand: no

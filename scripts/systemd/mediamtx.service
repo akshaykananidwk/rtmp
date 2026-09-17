@@ -1,0 +1,16 @@
+[Unit]
+Description=MediaMTX media server (AK Computer streaming engine)
+After=network.target
+
+[Service]
+User=mediamtx
+Group=mediamtx
+ExecStart=/usr/local/bin/mediamtx /etc/mediamtx/mediamtx.yml
+Restart=always
+RestartSec=2
+LimitNOFILE=65536
+NoNewPrivileges=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

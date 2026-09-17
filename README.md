@@ -1,59 +1,107 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# AK COMPUTER – ONE LIVE EVERYWHERE
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+**Stream Once. Reach Everywhere.**
+OBSમાંથી એક જ જગ્યાએ Live કરો અને connected platforms પર એકસાથે Live પહોંચાડો.
 
-## About Laravel
+Production-ready multi-platform live-streaming SaaS: one RTMP stream from OBS / vMix / Streamlabs is
+received by our own ingest server and distributed to YouTube, Facebook, Twitch, LinkedIn, Instagram
+(Live Producer) and any custom RTMP destination — with scheduling, recording, analytics, notifications,
+a one-click installer and a GitHub-based auto-update system with backup and automatic rollback.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+```
+OBS / vMix / Streamlabs ─▶ RTMP Ingest (MediaMTX) ─▶ Streaming Engine (FFmpeg relays)
+                                    │
+                            AK Computer Web App (Laravel 12)
+                                    │
+                 YouTube · Facebook · Twitch · LinkedIn · Instagram · Custom RTMP
+```
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+| | |
+|---|---|
+| Brand | AK COMPUTER · Owner Akshay Kanani · ☎ 9978123146 |
+| Address | 1st Floor, Shreeji Shopping Center, Near City Palace Hotel, Dwarka, Gujarat – 361335 · GST 24JHVPD9382M1ZA |
+| Stack | PHP 8.3+, Laravel 12, MySQL 8 / MariaDB, Apache, Redis (optional), MediaMTX, FFmpeg |
+| Version | `VERSION` file → 1.0.0 |
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Feature overview
 
-## Learning Laravel
+- **Public website** with SEO metadata, sitemap, robots, schema.org.
+- **Authentication**: login, remember-me, password reset, change password, TOTP 2FA + recovery codes, login throttling, audit trail.
+- **Roles**: Super Admin, Admin, Operator, Viewer — enforced with Laravel Policies/Gates server-side.
+- **Multi-tenant ready**: `TenantContext`, `TenantScope`, `BelongsToTenant`, policies and middleware; tenant-owned queries fail closed.
+- **Stream keys** (`AKDWK-XXXX-…`): hashed for auth lookups, encrypted for display; create/regenerate/revoke/enable/disable; audited reveal/copy.
+- **OBS Setup page** with server/key copy buttons and OBS/vMix/Streamlabs instructions.
+- **Destinations** via a plugin `StreamingDestinationInterface`: Custom RTMP, YouTube (Data API v3), Facebook Pages (Graph Live Video API), Twitch (Helix), LinkedIn & Instagram (official RTMP tools, honestly labelled).
+- **Multi-destination engine**: independent FFmpeg process per destination, exponential backoff (5 → 15 → 30 → 60 → 120 s), configurable retry count, one failure never stops the others.
+- **Live control**: Start/Stop live, restart/stop destination, refresh, real-time logs, stream test page, manual/automatic distribution modes.
+- **Scheduled streams** with timezone, destinations, auto-start/auto-stop, recording, thumbnails.
+- **Recording** (MP4, local or S3-compatible), library with authorized download, retention.
+- **Analytics**: daily streams, duration, bandwidth, destination success rate, errors.
+- **Notifications**: e-mail, dashboard, optional WhatsApp (Meta Cloud API).
+- **Backups**: files + database, checksums, verification, optional XChaCha20 encryption, download/restore/prune.
+- **GitHub auto-update**: check → show version/commit/changed files → maintenance → backup → download → verify → install (atomic symlink release or in-place) → migrate → cache clear → health check → activate; **automatic rollback** on any failure; protected paths; update lock; interrupted-update recovery.
+- **Health dashboard**: Application, Database, Cache, Redis, Queue, Storage, PHP, Streaming Engine, RTMP, SSL, GitHub.
+- **One-click installer** (`/install`) with requirement checks, DB test, admin creation, migrations, lock file.
+- **REST API** `/api/v1` (Sanctum tokens, abilities, rate limits) and signed **webhooks**.
+- **Security**: CSRF, CSP + security headers, encrypted secrets, secret masking in logs/errors, rate limiting, IDOR-safe bindings, file upload validation, error reference IDs.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## Documentation
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+| Document | Content |
+|---|---|
+| [docs/INSTALLATION.md](docs/INSTALLATION.md) | Shared hosting + VPS installation, the `/install` wizard |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Ubuntu VPS: Apache, PHP, MariaDB, Redis, FFmpeg, MediaMTX, SSL, systemd, cron, firewall, monitoring |
+| [docs/STREAMING_SETUP.md](docs/STREAMING_SETUP.md) | MediaMTX configuration, engine hooks, supervisor, scaling |
+| [docs/OBS_SETUP.md](docs/OBS_SETUP.md) | Encoder settings for OBS, vMix, Streamlabs |
+| [docs/PLATFORM_SETUP.md](docs/PLATFORM_SETUP.md) | YouTube / Meta / Twitch API apps, LinkedIn & Instagram RTMP |
+| [docs/UPDATE_SYSTEM.md](docs/UPDATE_SYSTEM.md) | GitHub auto-update, protected paths, rollback, recovery |
+| [docs/BACKUP_RESTORE.md](docs/BACKUP_RESTORE.md) | Backup manager, encryption, restore procedures |
+| [docs/SECURITY.md](docs/SECURITY.md) | Security architecture and checklist |
+| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Common problems and fixes |
+| [docs/API.md](docs/API.md) | REST API v1 reference |
+| [docs/PRODUCTION_READINESS_REPORT.md](docs/PRODUCTION_READINESS_REPORT.md) | Test results, known limitations, server specifications |
 
-## Laravel Sponsors
+## Quick start (development)
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+```bash
+composer install
+cp .env.example .env && php artisan key:generate
+touch database/database.sqlite   # or configure MySQL in .env
+php artisan migrate --seed       # roles, protected paths, settings
+php artisan db:seed --class=DemoSeeder   # local only: admin@example.com / ChangeMe!12345
+php artisan serve
+```
 
-### Premium Partners
+Or open `http://localhost:8000/install` for the guided installer.
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+## Tests
 
-## Contributing
+```bash
+php artisan test
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+62 tests / 534 assertions covering authentication, authorization, tenant isolation (IDOR), security
+hardening (XSS, SQLi, CSRF, path traversal, SSRF, upload), stream keys + engine hooks, multi-destination
+distribution with failure isolation (fake ffmpeg), recording, scheduling, backups (+encryption, restore),
+health checks, the installer (Workflow A), the API, webhooks, platform connectors (fake official APIs) and the
+auto-update system (Workflow D success and Workflow E broken migration → automatic rollback).
 
-## Code of Conduct
+## Repository structure
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```
+app/Domain/        Streaming · Destinations · Scheduling · Recording · Analytics · Updates · Backups · Health · Installer · Tenancy · Security · Settings · Audit · Notifications · Storage
+app/Http/          Controllers (Public, Auth, Admin, Api/V1, Installer, Webhooks, Internal) · Middleware · Requests
+app/Jobs           Queue jobs (destination preparation, update runner, tests)
+app/Console        stream:supervisor, stream:sync, health:check, backup:run, update:check/install/recover, logs:prune, user:make
+config/akstream.php  Application configuration
+database/          Migrations, seeders, factories
+resources/views/   Blade UI (public, auth, admin, installer, errors)
+public/assets/     Dark streaming UI CSS + vanilla JS (no build step required)
+scripts/           VPS installer, deploy script, MediaMTX config, systemd units, Apache vhost
+docs/              Documentation
+tests/             Unit · Feature · Security
+```
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Proprietary — © AK COMPUTER, Dwarka. All rights reserved.

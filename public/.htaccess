@@ -9,10 +9,6 @@
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-    # Handle X-XSRF-Token Header
-    RewriteCond %{HTTP:x-xsrf-token} .
-    RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
-
     # Redirect Trailing Slashes If Not A Folder...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} (.+)/$
@@ -23,3 +19,11 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+# Never execute scripts inside upload directories
+<IfModule mod_rewrite.c>
+    RewriteRule ^(uploads|storage)/.*\.(php|phtml|phar|pl|py|cgi|sh)$ - [F,L]
+</IfModule>
+<FilesMatch "\.(env|log|sqlite|sql|zip|enc)$">
+    Require all denied
+</FilesMatch>
