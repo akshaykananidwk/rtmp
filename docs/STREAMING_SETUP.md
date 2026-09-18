@@ -72,3 +72,38 @@ so relays are executed where the source arrives. Sessions on other nodes are ign
 The web app works without an engine (`STREAM_ENGINE=none`): dashboard, destinations, schedules, backups and updates
 function; the Health page shows the engine as "not configured". Point `STREAM_SERVER_API_URL` to a VPS media
 node to combine both.
+
+## Overlays and the branded stream
+
+When a stream key has an overlay attached, the supervisor runs one extra FFmpeg process:
+
+```
+OBS ─▶ live/<KEY> ──▶ [overlay encode: scale + drawbox + drawtext + logo] ──▶ branded/<KEY>
+                                                                                   │
+                                        relays (-c copy) ─────────────────────────┴─▶ YouTube / Facebook / …
+                                        recording (-c copy) ───────────────────────┘
+```
+
+- Exactly **one** re-encode regardless of how many destinations there are; every relay still copies.
+- The branded path is published from localhost only — `EngineHookController` accepts `branded/<key>`
+  publishes solely from private addresses, and `scripts/mediamtx/mediamtx.yml` declares `~^branded/.+$`.
+- Static text is passed through `drawtext textfile=…:reload=1`, so saving new wording in the admin
+  panel changes the picture within about a second without restarting the encoder — and user text is
+  never interpolated into the filter graph, which rules out filter-injection.
+- The clock uses `%{localtime}`; FFmpeg parses that string three times, so the colons carry three
+  backslashes (verified against FFmpeg 6.1 — fewer produce "requires at most 1 arguments").
+- `drawbox` has no `tw`/`th`, and `overlay` uses `W/H` for the frame and `w/h` for the logo, so each
+  element type gets its own position expressions. `tests/Feature/OverlayRenderingTest.php` renders
+  every element and every position with the real binary and counts drawn pixels.
+- Text needs a TrueType font (`fonts-dejavu-core`); without one, text elements are skipped rather
+  than crashing the encoder, and the panel says so.
+
+CPU guidance: 1080p30 at `veryfast` is roughly one core. Drop to 720p or `ultrafast` on small VPSes.
+Without an overlay nothing is re-encoded at all.
+
+## Live preview
+
+`/admin/preview/{endpoint}/index.m3u8` proxies MediaMTX's HLS output for authorised users, rewriting
+segment URLs so the browser never contacts the media server and never sees the stream key. The player
+(hls.js, served locally to satisfy the CSP) shows the branded output when an overlay is live, with a
+toggle for the raw source. `hlsVariant: mpegts` keeps the playlist simple to proxy.

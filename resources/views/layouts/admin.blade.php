@@ -19,6 +19,7 @@
         ['admin.live', '🔴', 'Live Stream', 'streams.view'],
         ['admin.stream-test', '🧪', 'Stream Test', 'streams.view'],
         ['admin.destinations.index', '📡', 'Destinations', 'destinations.view'],
+        ['admin.overlays.index', '🎨', 'Overlays', 'overlays.view'],
         ['admin.schedules.index', '📅', 'Schedules', 'schedules.view'],
         ['admin.recordings.index', '🎬', 'Recordings', 'recordings.view'],
         ['admin.analytics', '📈', 'Analytics', 'analytics.view'],

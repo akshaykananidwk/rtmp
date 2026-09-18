@@ -61,6 +61,15 @@ Route::middleware('installed')->group(function (): void {
         Route::get('/platforms/{platform}/callback', [Admin\OAuthController::class, 'callback'])->name('platforms.callback');
         Route::delete('/platforms/accounts/{account}', [Admin\OAuthController::class, 'disconnect'])->name('platforms.disconnect');
 
+        // Overlays (news-style branding burned into the stream)
+        Route::resource('overlays', Admin\OverlayController::class)->except(['show']);
+        Route::post('/overlays/assign', [Admin\OverlayController::class, 'assign'])->name('overlays.assign');
+
+        // Live preview (authenticated HLS proxy)
+        Route::get('/preview/{endpoint}/status', [Admin\PreviewController::class, 'status'])->middleware('throttle:status')->name('preview.status');
+        Route::get('/preview/{endpoint}/index.m3u8', [Admin\PreviewController::class, 'playlist'])->name('preview.playlist');
+        Route::get('/preview/{endpoint}/{file}', [Admin\PreviewController::class, 'segment'])->name('preview.segment');
+
         // Schedules
         Route::resource('schedules', Admin\ScheduleController::class)->except(['show']);
         Route::post('/schedules/{schedule}/cancel', [Admin\ScheduleController::class, 'cancel'])->name('schedules.cancel');

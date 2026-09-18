@@ -24,7 +24,7 @@ webrtc: no
 # --- HLS preview (only reachable from localhost / reverse proxy) --------------
 hls: yes
 hlsAddress: 127.0.0.1:8888
-hlsVariant: lowLatency
+hlsVariant: mpegts   # simple segments: easy to proxy into the admin preview
 hlsSegmentCount: 7
 hlsSegmentDuration: 1s
 hlsAllowOrigin: '*'
@@ -50,4 +50,8 @@ pathDefaults:
 paths:
   # OBS publishes to rtmp://HOST/live/<STREAM_KEY>  → MediaMTX path "live/<STREAM_KEY>"
   "~^live/.+$":
+    source: publisher
+
+  # The overlay encoder republishes here; destinations and the preview read from it
+  "~^branded/.+$":
     source: publisher

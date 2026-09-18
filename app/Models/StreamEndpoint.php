@@ -20,7 +20,7 @@ class StreamEndpoint extends Model
     use HasUlids;
     use SoftDeletes;
 
-    protected $fillable = ['tenant_id', 'user_id', 'name', 'slug', 'key_hash', 'key_encrypted', 'key_hint', 'is_enabled', 'auto_distribute', 'record_enabled', 'status', 'last_seen_at', 'revoked_at'];
+    protected $fillable = ['tenant_id', 'user_id', 'name', 'slug', 'key_hash', 'key_encrypted', 'key_hint', 'is_enabled', 'auto_distribute', 'record_enabled', 'overlay_id', 'status', 'last_seen_at', 'revoked_at'];
 
     protected $hidden = ['key_hash', 'key_encrypted'];
 
@@ -38,6 +38,11 @@ class StreamEndpoint extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function overlay(): BelongsTo
+    {
+        return $this->belongsTo(Overlay::class);
     }
 
     public function destinations(): HasMany

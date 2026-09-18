@@ -143,3 +143,79 @@
   const runForm = $('#install-run-form');
   if (runForm && runForm.dataset.auto === '1') setTimeout(() => runForm.submit(), 600);
 })();
+
+/* ---------------------------------------------------------------------------
+ * Live preview: plays the authenticated HLS proxy, switching between the
+ * branded output and the raw OBS source.
+ * ------------------------------------------------------------------------- */
+(function () {
+  'use strict';
+  var box = document.querySelector('[data-preview]');
+  if (!box) return;
+
+  var video = box.querySelector('[data-preview-video]');
+  var placeholder = box.querySelector('[data-preview-placeholder]');
+  var message = box.querySelector('[data-preview-message]');
+  var info = box.querySelector('[data-preview-info]');
+  var rawToggle = box.querySelector('[data-preview-raw]');
+  var statusUrl = box.dataset.preview;
+  var hls = null, currentUrl = null;
+
+  function show(on, text) {
+    video.style.display = on ? '' : 'none';
+    placeholder.style.display = on ? 'none' : 'flex';
+    if (text) message.textContent = text;
+  }
+
+  function stop() {
+    if (hls) { hls.destroy(); hls = null; }
+    video.removeAttribute('src'); video.load();
+    currentUrl = null;
+  }
+
+  function play(url) {
+    if (url === currentUrl) return;
+    stop();
+    currentUrl = url;
+    if (window.Hls && window.Hls.isSupported()) {
+      hls = new window.Hls({ liveSyncDurationCount: 3, lowLatencyMode: false, manifestLoadingMaxRetry: 6 });
+      hls.loadSource(url);
+      hls.attachMedia(video);
+      hls.on(window.Hls.Events.MANIFEST_PARSED, function () { show(true); video.play().catch(function () {}); });
+      hls.on(window.Hls.Events.ERROR, function (_e, data) {
+        if (!data.fatal) return;
+        if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) { hls.startLoad(); }
+        else if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) { hls.recoverMediaError(); }
+        else { stop(); show(false, 'Preview could not start – is the stream still running?'); }
+      });
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = url; show(true); video.play().catch(function () {});
+    } else {
+      show(false, 'This browser cannot play HLS previews.');
+    }
+  }
+
+  function tick() {
+    fetch(statusUrl, { headers: { Accept: 'application/json' } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        if (!j) return;
+        if (!j.live) { stop(); show(false, 'Waiting for a stream… start streaming in OBS.'); if (info) info.textContent = 'No incoming stream'; return; }
+        var wantRaw = rawToggle && rawToggle.checked;
+        var url = (wantRaw && j.raw_playlist) ? j.raw_playlist : j.playlist;
+        if (info) {
+          info.textContent = (j.branded ? 'Branded output' + (j.overlay ? ' · ' + j.overlay : '') : 'Direct from OBS')
+            + (j.resolution ? ' · ' + j.resolution : '') + (j.fps ? ' @ ' + j.fps + ' fps' : '');
+        }
+        if (url) play(url);
+      })
+      .catch(function () {});
+  }
+
+  if (rawToggle) rawToggle.addEventListener('change', function () { currentUrl = null; tick(); });
+  var reload = box.querySelector('[data-preview-reload]');
+  if (reload) reload.addEventListener('click', function () { stop(); tick(); });
+
+  tick();
+  setInterval(tick, 8000);
+})();

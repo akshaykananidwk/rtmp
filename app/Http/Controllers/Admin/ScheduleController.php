@@ -135,7 +135,7 @@ class ScheduleController extends Controller
             if (! in_array($file->getMimeType(), config('akstream.security.allowed_upload_mimes'), true)) {
                 abort(422, 'Invalid image type');
             }
-            $out['thumbnail_path'] = $file->storeAs('private/thumbnails', Str::ulid().'.'.$file->guessExtension(), 'local');
+            $out['thumbnail_path'] = $file->storeAs('thumbnails', Str::ulid().'.'.$file->guessExtension(), 'local');
         }
 
         return $out;

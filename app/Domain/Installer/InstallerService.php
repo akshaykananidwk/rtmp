@@ -180,10 +180,10 @@ class InstallerService
         ]);
         $user->assignRole(Role::SUPER_ADMIN);
 
-        foreach (['app/backups', 'app/recordings', 'app/releases', 'app/private', 'app/public/uploads'] as $dir) {
+        foreach (['app/backups', 'app/releases', 'app/private', 'app/private/recordings', 'app/private/overlays', 'app/private/thumbnails', 'app/public/uploads'] as $dir) {
             File::ensureDirectoryExists(storage_path($dir), 0750);
         }
-        foreach (['app/backups', 'app/recordings', 'app/releases', 'app/private'] as $dir) {
+        foreach (['app/backups', 'app/releases', 'app/private'] as $dir) {
             File::put(storage_path($dir.'/.htaccess'), "Require all denied\n");
         }
 

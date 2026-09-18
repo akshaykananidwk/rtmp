@@ -82,7 +82,7 @@ final class Preflight
     {
         $required = [
             'storage/app', 'storage/app/public', 'storage/app/private', 'storage/app/backups',
-            'storage/app/recordings', 'storage/app/releases', 'storage/framework/cache/data',
+            'storage/app/private/recordings', 'storage/app/private/overlays', 'storage/app/releases', 'storage/framework/cache/data',
             'storage/framework/sessions', 'storage/framework/views', 'storage/logs', 'bootstrap/cache',
         ];
 

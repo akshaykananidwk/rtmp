@@ -34,6 +34,8 @@ OBS / vMix / Streamlabs ─▶ RTMP Ingest (MediaMTX) ─▶ Streaming Engine (F
 - **Destinations** via a plugin `StreamingDestinationInterface`: Custom RTMP, YouTube (Data API v3), Facebook Pages (Graph Live Video API), Twitch (Helix), LinkedIn & Instagram (official RTMP tools, honestly labelled).
 - **Multi-destination engine**: independent FFmpeg process per destination, exponential backoff (5 → 15 → 30 → 60 → 120 s), configurable retry count, one failure never stops the others.
 - **Live control**: Start/Stop live, restart/stop destination, refresh, real-time logs, stream test page, manual/automatic distribution modes.
+- **Live preview**: watch the outgoing picture inside the panel through an authenticated HLS proxy (the stream key never reaches the browser), switchable between the branded output and the raw OBS source.
+- **Overlays**: news-channel branding burned into the stream — headline, scrolling ticker, clock/date, logo and colour bars, nine positions, live text editing while on air. Rendered once and copied to every destination, so ten platforms cost one encode.
 - **Scheduled streams** with timezone, destinations, auto-start/auto-stop, recording, thumbnails.
 - **Recording** (MP4, local or S3-compatible), library with authorized download, retention.
 - **Analytics**: daily streams, duration, bandwidth, destination success rate, errors.

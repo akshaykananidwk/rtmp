@@ -15,6 +15,7 @@ class RoleSeeder extends Seeder
         'streams' => ['streams.view', 'streams.control', 'streams.logs'],
         'stream_keys' => ['stream_keys.view', 'stream_keys.manage'],
         'destinations' => ['destinations.view', 'destinations.manage', 'destinations.test'],
+        'overlays' => ['overlays.view', 'overlays.manage'],
         'schedules' => ['schedules.view', 'schedules.manage'],
         'recordings' => ['recordings.view', 'recordings.download', 'recordings.delete'],
         'analytics' => ['analytics.view'],
@@ -29,14 +30,14 @@ class RoleSeeder extends Seeder
     public const ROLE_PERMISSIONS = [
         Role::SUPER_ADMIN => '*',
         Role::ADMIN => [
-            'dashboard.view', 'streams.*', 'stream_keys.*', 'destinations.*', 'schedules.*', 'recordings.*',
+            'dashboard.view', 'streams.*', 'stream_keys.*', 'destinations.*', 'overlays.*', 'schedules.*', 'recordings.*',
             'analytics.view', 'users.*', 'backups.view', 'backups.manage', 'health.view', 'logs.view', 'settings.view', 'updates.view',
         ],
         Role::OPERATOR => [
-            'dashboard.view', 'streams.view', 'streams.control', 'streams.logs', 'stream_keys.view', 'destinations.view', 'destinations.test',
+            'dashboard.view', 'streams.view', 'streams.control', 'streams.logs', 'stream_keys.view', 'destinations.view', 'destinations.test', 'overlays.view', 'overlays.manage',
             'schedules.view', 'schedules.manage', 'recordings.view', 'recordings.download', 'analytics.view', 'health.view', 'logs.view',
         ],
-        Role::VIEWER => ['dashboard.view', 'streams.view', 'destinations.view', 'schedules.view', 'recordings.view', 'analytics.view', 'health.view'],
+        Role::VIEWER => ['dashboard.view', 'streams.view', 'destinations.view', 'overlays.view', 'schedules.view', 'recordings.view', 'analytics.view', 'health.view'],
     ];
 
     public function run(): void

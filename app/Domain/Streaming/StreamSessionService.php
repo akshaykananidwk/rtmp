@@ -44,6 +44,7 @@ class StreamSessionService
                 'node_id' => $nodeId ?? config('akstream.streaming.node_id'),
                 'started_at' => now(),
                 'recording_enabled' => $endpoint->record_enabled || $this->settings->bool('streaming', 'recording_enabled'),
+                'overlay_id' => $endpoint->overlay_id,
             ]);
 
             $endpoint->forceFill(['status' => 'live', 'last_seen_at' => now()])->save();

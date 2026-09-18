@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace App\Domain\Streaming\Relay;
 
 use App\Domain\Destinations\ConnectorRegistry;
+use App\Domain\Overlays\OverlayRenderer;
 use App\Domain\Settings\SettingsService;
 use App\Domain\Streaming\Engines\StreamEngineInterface;
 use App\Domain\Streaming\StreamLogger;
 use App\Domain\Streaming\StreamSessionService;
 use App\Events\DestinationFailed;
 use App\Events\DestinationRecovered;
+use App\Models\Overlay;
 use App\Models\Recording;
+use App\Models\StreamEndpoint;
 use App\Models\StreamSession;
 use App\Models\StreamSessionDestination;
 use App\Support\SecretMasker;
@@ -33,6 +36,9 @@ class RelaySupervisor
     /** @var array<string, FfmpegRelayProcess> keyed by session id */
     private array $recorders = [];
 
+    /** @var array<string, FfmpegRelayProcess> branding (overlay) encoders, keyed by session id */
+    private array $branders = [];
+
     /** @var array<string, array{bytes:int, at:float}> */
     private array $ingestStats = [];
 
@@ -53,6 +59,7 @@ class RelaySupervisor
     /** One reconciliation pass. Safe to call repeatedly. */
     public function tick(): void
     {
+        $this->reconcileBranding();
         $this->reconcileDestinations();
         $this->reconcileRecordings();
         $this->collectIngestStats();
@@ -68,8 +75,12 @@ class RelaySupervisor
             $rec->stop();
             $this->finalizeRecording($sessionId);
         }
+        foreach ($this->branders as $brander) {
+            $brander->stop();
+        }
         $this->relays = [];
         $this->recorders = [];
+        $this->branders = [];
     }
 
     // ---------------------------------------------------------------- destinations
@@ -164,7 +175,7 @@ class RelaySupervisor
         }
 
         $endpoint = $session->endpoint()->withoutGlobalScopes()->first();
-        $source = $this->engine->internalSourceUrl('live/'.$endpoint->plainKey());
+        $source = $this->sourceFor($session, $endpoint);
 
         $relay = new FfmpegRelayProcess($sd->id, 'relay', $source, $target);
         try {
@@ -257,6 +268,121 @@ class RelaySupervisor
         event(new DestinationFailed($sd));
     }
 
+    // ---------------------------------------------------------------- branding (overlays)
+
+    /**
+     * Where relays and the recorder read from: the branded stream when an overlay is
+     * live, otherwise the raw ingest path. One encode feeds every destination.
+     */
+    private function sourceFor(StreamSession $session, ?StreamEndpoint $endpoint): string
+    {
+        if ($endpoint === null) {
+            return $this->engine->internalSourceUrl('live/unknown');
+        }
+
+        if ($session->branding_status === 'live') {
+            return $this->engine->internalSourceUrl($this->brandedPath($endpoint));
+        }
+
+        return $this->engine->internalSourceUrl('live/'.$endpoint->plainKey());
+    }
+
+    private function brandedPath(StreamEndpoint $endpoint): string
+    {
+        return 'branded/'.$endpoint->plainKey();
+    }
+
+    private function reconcileBranding(): void
+    {
+        $sessions = StreamSession::withoutGlobalScopes()
+            ->whereIn('status', ['detected', 'live'])
+            ->whereNotNull('overlay_id')
+            ->where(fn ($q) => $q->where('node_id', $this->nodeId)->orWhereNull('node_id'))
+            ->get();
+
+        $active = [];
+
+        foreach ($sessions as $session) {
+            $active[$session->id] = true;
+
+            if (isset($this->branders[$session->id])) {
+                $brander = $this->branders[$session->id];
+                $brander->poll();
+
+                if ($brander->isRunning()) {
+                    if ($session->branding_status !== 'live' && $brander->bytesOut() > 65536) {
+                        $session->forceFill(['branding_status' => 'live'])->save();
+                        $this->logger->info($session->tenant_id, 'overlay.live', 'Overlay is being rendered into the stream', $session->id);
+                    }
+
+                    continue;
+                }
+
+                // The encoder exited – report it and let the next tick restart it
+                $error = $brander->lastError();
+                unset($this->branders[$session->id]);
+                $session->forceFill(['branding_status' => 'failed'])->save();
+                $this->logger->error($session->tenant_id, 'overlay.failed', 'Overlay encoder stopped: '.$error, $session->id);
+
+                continue;
+            }
+
+            $this->startBranding($session);
+        }
+
+        foreach ($this->branders as $sessionId => $brander) {
+            if (! isset($active[$sessionId])) {
+                $brander->stop();
+                unset($this->branders[$sessionId]);
+                StreamSession::withoutGlobalScopes()->where('id', $sessionId)->update(['branding_status' => null]);
+            }
+        }
+    }
+
+    private function startBranding(StreamSession $session): void
+    {
+        $endpoint = $session->endpoint()->withoutGlobalScopes()->first();
+        $overlay = Overlay::withoutGlobalScopes()->find($session->overlay_id);
+
+        if (! $endpoint || ! $overlay) {
+            $session->forceFill(['overlay_id' => null, 'branding_status' => null])->save();
+
+            return;
+        }
+
+        $renderer = app(OverlayRenderer::class);
+        $built = $renderer->build($overlay);
+
+        if ($built === null) {
+            $session->forceFill(['branding_status' => null, 'overlay_id' => null])->save();
+            $this->logger->warning($session->tenant_id, 'overlay.empty', 'Overlay "'.$overlay->name.'" has nothing to draw – streaming without it', $session->id);
+
+            return;
+        }
+
+        if ($renderer->font() === null) {
+            $this->logger->warning($session->tenant_id, 'overlay.no_font', 'No TrueType font found for text overlays – install fonts-dejavu or set OVERLAY_FONT', $session->id);
+        }
+
+        $source = $this->engine->internalSourceUrl('live/'.$endpoint->plainKey());
+        $target = $this->engine->internalSourceUrl($this->brandedPath($endpoint));
+
+        $brander = new FfmpegRelayProcess('brand-'.$session->id, 'brand', $source, $target, $renderer->encodeArguments($overlay, $built));
+
+        try {
+            $brander->start();
+        } catch (\Throwable $e) {
+            $session->forceFill(['branding_status' => 'failed'])->save();
+            $this->logger->error($session->tenant_id, 'overlay.failed', 'Could not start the overlay encoder: '.$e->getMessage(), $session->id);
+
+            return;
+        }
+
+        $this->branders[$session->id] = $brander;
+        $session->forceFill(['branding_status' => 'starting'])->save();
+        $this->logger->info($session->tenant_id, 'overlay.starting', 'Rendering overlay "'.$overlay->name.'" ('.$overlay->resolution.' @ '.$overlay->bitrate_kbps.' kbps)', $session->id);
+    }
+
     // ---------------------------------------------------------------- recording
 
     private function reconcileRecordings(): void
@@ -302,7 +428,7 @@ class RelaySupervisor
         $rel = $dir.'/'.now()->format('Ymd-His').'-'.substr($session->id, -6).'.mp4';
         $abs = Storage::disk($disk)->path($rel);
 
-        $source = $this->engine->internalSourceUrl('live/'.$endpoint->plainKey());
+        $source = $this->sourceFor($session, $endpoint);
         $rec = new FfmpegRelayProcess($session->id, 'record', $source, $abs);
         try {
             $rec->start();

@@ -29,27 +29,38 @@ final class FfmpegRelayProcess
 
     public function __construct(
         public readonly string $id,
-        public readonly string $kind, // relay | record
+        public readonly string $kind, // relay | record | brand
         private readonly string $sourceUrl,
         private readonly string $targetUrl,
         private readonly array $extraArgs = [],
     ) {
         $bin = (string) config('akstream.streaming.ffmpeg', 'ffmpeg');
         $isFile = $kind === 'record';
+        $isBranding = $kind === 'brand';
 
         $cmd = [
             $bin, '-hide_banner', '-nostdin', '-loglevel', 'warning', '-nostats',
             '-rw_timeout', '15000000', '-i', $this->sourceUrl,
-            '-c', 'copy',
         ];
 
-        if ($isFile) {
-            $cmd = array_merge($cmd, ['-movflags', '+faststart+frag_keyframe+empty_moov', '-f', 'mp4']);
+        if ($isBranding) {
+            // Overlay pass: re-encode once, everything else copies the result.
+            // extraArgs carries the extra inputs, filter graph and encoder settings.
+            $cmd = array_merge($cmd, $this->extraArgs, ['-f', 'flv', '-flvflags', 'no_duration_filesize']);
         } else {
-            $cmd = array_merge($cmd, ['-bsf:a', 'aac_adtstoasc', '-f', 'flv', '-flvflags', 'no_duration_filesize']);
+            $cmd[] = '-c';
+            $cmd[] = 'copy';
+
+            if ($isFile) {
+                $cmd = array_merge($cmd, ['-movflags', '+faststart+frag_keyframe+empty_moov', '-f', 'mp4']);
+            } else {
+                $cmd = array_merge($cmd, ['-bsf:a', 'aac_adtstoasc', '-f', 'flv', '-flvflags', 'no_duration_filesize']);
+            }
+
+            $cmd = array_merge($cmd, $this->extraArgs);
         }
 
-        $cmd = array_merge($cmd, $this->extraArgs, ['-progress', 'pipe:1', $this->targetUrl]);
+        $cmd = array_merge($cmd, ['-progress', 'pipe:1', $this->targetUrl]);
 
         $this->process = new Process($cmd);
         $this->process->setTimeout(null);

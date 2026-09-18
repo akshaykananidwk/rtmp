@@ -35,7 +35,22 @@ class EngineHookController extends Controller
             return $allowed ? response()->json(['ok' => true]) : response()->json(['ok' => false], 401);
         }
 
-        if ($action !== 'publish' || ! str_starts_with($path, 'live/')) {
+        if ($action !== 'publish') {
+            return response()->json(['ok' => false], 401);
+        }
+
+        // The overlay encoder republishes the branded stream from this machine only
+        if (str_starts_with($path, 'branded/')) {
+            $ip = (string) $request->input('ip', $request->ip());
+            $local = in_array($ip, ['127.0.0.1', '::1'], true) || str_starts_with($ip, '10.') || str_starts_with($ip, '192.168.') || (bool) preg_match('/^172\.(1[6-9]|2\d|3[01])\./', $ip);
+            $endpoint = $this->keys->findByKey(substr($path, 8));
+
+            return $local && $endpoint && $endpoint->isUsable()
+                ? response()->json(['ok' => true])
+                : response()->json(['ok' => false], 401);
+        }
+
+        if (! str_starts_with($path, 'live/')) {
             return response()->json(['ok' => false], 401);
         }
 

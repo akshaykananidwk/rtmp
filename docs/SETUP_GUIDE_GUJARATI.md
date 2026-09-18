@@ -269,6 +269,66 @@ Update પહેલાં આપોઆપ backup થાય છે; કંઈ બ
 
 ---
 
+## ભાગ 9 — Live Preview (શું live જાય છે એ જુઓ)
+
+**Live Stream** page પર ઉપર **Live preview** નું box છે. OBS ચાલુ થાય એટલે ત્યાં જ video દેખાશે —
+બરાબર એ જ જે તમારા viewers ને જાય છે.
+
+- થોડી (5-10 સેકન્ડ) delay હોય છે — એ HLS ની સ્વાભાવિક વાત છે
+- અવાજ default માં બંધ છે (echo ન થાય માટે); સાંભળવું હોય તો player માં unmute કરો
+- Overlay ચાલુ હોય તો **"show source (no overlay)"** ટીક કરીને મૂળ OBS picture સાથે સરખાવી શકો
+- Preview સુરક્ષિત છે: video panel દ્વારા જ આવે છે, તમારી stream key browser સુધી ક્યારેય જતી નથી
+
+---
+
+## ભાગ 10 — Overlays (news channel જેવી લીટી, ઘડિયાળ, logo)
+
+**Overlays** page પર જઈને તમે stream ઉપર આ બધું ઉમેરી શકો:
+
+| Element | શું કરે |
+|---|---|
+| **Text line** | મોટી headline — જેમ કે `AK COMPUTER LIVE` કે મહેમાનનું નામ |
+| **Ticker** | નીચે સરકતી પટ્ટી (news channel જેવી) |
+| **Clock** | ઘડિયાળ/તારીખ — server ના સમય પ્રમાણે જાતે ચાલે |
+| **Logo** | તમારો logo (PNG transparent હોય તો સૌથી સારું) |
+| **Colour bar** | પાછળની કાળી/રંગીન પટ્ટી જેથી લખાણ વંચાય |
+
+### કેવી રીતે વાપરવું
+
+1. **Overlays** → **+ New overlay** — તૈયાર news layout પહેલેથી ભરેલું આવશે
+2. દરેક લીટીનું લખાણ, રંગ, size, જગ્યા (9 જગ્યાઓમાંથી) પસંદ કરો
+3. **Create overlay** દબાવો
+4. નીચે **"Which stream key uses which overlay"** માં તમારી key સામે overlay પસંદ કરી **Apply**
+5. બસ! હવે એ key થી જે પણ live જશે એના પર overlay દેખાશે
+
+### ⭐ સૌથી કામની વાત — Live હોય ત્યારે પણ લખાણ બદલી શકાય
+
+Stream ચાલુ હોય ત્યારે Overlay ખોલી, text બદલી, **Save** દબાવો — **એક સેકન્ડમાં** screen પર
+નવું લખાણ આવી જશે, stream તૂટશે નહીં. (Size/રંગ/જગ્યા બદલો તો એ next stream થી લાગુ થાય.)
+
+એટલે તમે news channel ની જેમ live દરમિયાન headline બદલતા રહી શકો.
+
+### ધ્યાન રાખવાની વાત — CPU
+
+Overlay વાપરો એટલે video ને ફરી encode કરવું પડે (લગભગ 1 CPU core, 1080p30, "veryfast").
+પણ અમે એ **એક જ વાર** કરીએ છીએ — પછી બધા platforms એની જ copy લે છે. એટલે 10 platform હોય
+તો પણ CPU એટલો જ વપરાય.
+
+VPS નાનો હોય તો: resolution **720p** રાખો અથવા preset **ultrafast** કરો.
+Overlay ન વાપરો ત્યારે stream સીધો copy થાય છે — CPU લગભગ શૂન્ય.
+
+### Font જોઈશે
+
+લખાણ દોરવા માટે server પર font હોવો જોઈએ. ન હોય તો એક વાર:
+
+```bash
+sudo apt install -y fonts-dejavu-core
+sudo systemctl restart akstream-supervisor
+```
+
+
+---
+
 ## ઝડપી સમસ્યા-નિવારણ
 
 | સમસ્યા | ઉપાય |
@@ -278,6 +338,8 @@ Update પહેલાં આપોઆપ backup થાય છે; કંઈ બ
 | Destination `connecting` માં અટકે | **Live Logs** જુઓ · destination **Test** કરો · platform ની key સાચી છે? |
 | બધું `pending` રહે | `systemctl status akstream-supervisor` — બંધ હોય તો `systemctl restart akstream-supervisor` |
 | Health: Streaming Engine લાલ | ભાગ 1.3 (open_basedir) ફરી કરો |
+| Overlay નું લખાણ ન દેખાય | Server પર font નથી: `apt install fonts-dejavu-core` પછી `systemctl restart akstream-supervisor` |
+| Preview કાળું દેખાય | Stream ચાલુ છે? થોડી સેકન્ડ રાહ જુઓ · MediaMTX નું HLS ચાલુ હોવું જોઈએ (`doctor.sh` જુઓ) |
 | Instagram key કામ ન કરે | Live Producer ની key દર વખતે નવી હોય છે — દરેક live પહેલાં update કરો |
 | Facebook: permission error | App Review બાકી છે — ત્યાં સુધી Custom RTMP રીત વાપરો (ભાગ 4.1) |
 

@@ -37,6 +37,12 @@ return [
         'key_prefix' => 'AKDWK',
     ],
 
+    'overlay' => [
+        // TrueType font used for text overlays; auto-detected when empty
+        'font' => env('OVERLAY_FONT', ''),
+        'max_image_kb' => 2048,
+    ],
+
     'recording' => [
         'disk' => env('RECORDING_DISK', 'local'),
         'path' => env('RECORDING_PATH', 'recordings'),

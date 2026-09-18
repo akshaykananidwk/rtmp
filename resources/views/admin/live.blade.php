@@ -32,9 +32,33 @@
     @endcan
   </div>
 </div>
+@php($previewEndpoint = ($payload['session']['id'] ?? null) ? \App\Models\StreamEndpoint::where('name', $payload['session']['endpoint'])->first() : $endpoints->first())
+@if($previewEndpoint)
+<div class="card" style="margin-bottom:18px" data-preview="{{ route('admin.preview.status', $previewEndpoint) }}">
+  <div class="card-header">
+    <div><h3 style="margin:0">Live preview</h3><div class="small muted" data-preview-info>What your viewers are receiving right now</div></div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <label class="check small" title="Compare with the picture OBS sends, before the overlay"><input type="checkbox" data-preview-raw> show source (no overlay)</label>
+      <button class="btn btn-sm btn-outline" data-preview-reload>↻</button>
+    </div>
+  </div>
+  <div style="position:relative;background:#070a12;border:1px solid var(--border);border-radius:10px;overflow:hidden;aspect-ratio:16/9">
+    <video data-preview-video muted playsinline controls style="width:100%;height:100%;display:none;background:#000"></video>
+    <div data-preview-placeholder style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);gap:8px">
+      <div style="font-size:2rem">📺</div><div data-preview-message>Waiting for a stream…</div>
+    </div>
+  </div>
+  <p class="small muted" style="margin-top:8px">The preview is delayed a few seconds and is muted by default. It never exposes your stream key — the video is proxied through this panel.</p>
+</div>
+@endif
+
 <div class="card"><div class="card-header"><h3>Live logs</h3><span class="small muted">auto-refresh</span></div>
   <div class="log-box" data-logs-url="{{ route('admin.live.logs') }}" data-after="{{ $logs->last()?->id ?? 0 }}">
     @foreach($logs as $l)<div class="log-line log-{{ $l->level }}"><span class="log-time">{{ $l->created_at->format('H:i:s') }}</span><span>{{ $l->message }}</span></div>@endforeach
   </div>
 </div>
 @endsection
+
+@push('scripts')
+<script src="{{ asset('assets/js/hls.min.js') }}?v={{ $appVersion }}"></script>
+@endpush
