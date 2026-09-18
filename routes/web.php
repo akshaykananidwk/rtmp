@@ -22,6 +22,8 @@ Route::middleware('installed')->group(function (): void {
         Route::get('/login', [Auth\LoginController::class, 'show'])->name('login');
         Route::post('/login', [Auth\LoginController::class, 'login'])->middleware('throttle:login');
         Route::get('/admin/login', fn () => redirect()->route('login'))->name('admin.login');
+        Route::get('/register', [Auth\RegisterController::class, 'show'])->name('register');
+        Route::post('/register', [Auth\RegisterController::class, 'store'])->middleware('throttle:register')->name('register.store');
         Route::get('/forgot-password', [Auth\PasswordResetController::class, 'request'])->name('password.request');
         Route::post('/forgot-password', [Auth\PasswordResetController::class, 'email'])->middleware('throttle:password-reset')->name('password.email');
         Route::get('/reset-password/{token}', [Auth\PasswordResetController::class, 'reset'])->name('password.reset');

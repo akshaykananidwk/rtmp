@@ -16,7 +16,7 @@ use Illuminate\View\View;
 
 class SettingsController extends Controller
 {
-    private const GROUPS = ['general', 'streaming', 'recording', 'storage', 'mail', 'security', 'platforms', 'notifications', 'backups'];
+    private const GROUPS = ['general', 'streaming', 'registration', 'recording', 'storage', 'mail', 'security', 'platforms', 'notifications', 'backups'];
 
     public function __construct(private readonly SettingsService $settings, private readonly AuditLogger $audit) {}
 
@@ -144,6 +144,12 @@ class SettingsController extends Controller
                 'encryption' => ['nullable', 'in:tls,ssl,none'],
                 'from_address' => ['nullable', 'email', 'max:190'],
                 'from_name' => ['nullable', 'string', 'max:100'],
+            ],
+            'registration' => [
+                'open' => ['nullable', 'boolean'],
+                'default_plan' => ['required', 'string', 'max:40'],
+                'max_stream_keys' => ['required', 'integer', 'min:1', 'max:100'],
+                'max_destinations' => ['required', 'integer', 'min:1', 'max:100'],
             ],
             'security' => [
                 'session_timeout' => ['required', 'integer', 'min:5', 'max:1440'],

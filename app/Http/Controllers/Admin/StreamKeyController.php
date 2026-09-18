@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Domain\Accounts\PlanLimits;
 use App\Domain\Audit\AuditLogger;
 use App\Domain\Streaming\StreamKeyService;
 use App\Domain\Tenancy\TenantContext;
@@ -39,6 +40,11 @@ class StreamKeyController extends Controller
     public function store(Request $request, TenantContext $tenant): RedirectResponse
     {
         $this->authorize('create', StreamEndpoint::class);
+
+        if (app(PlanLimits::class)->reached(PlanLimits::STREAM_KEYS, $request->user())) {
+            return back()->withInput()->with('error', app(PlanLimits::class)->message(PlanLimits::STREAM_KEYS));
+        }
+
         $data = $this->validated($request);
 
         $user = ! empty($data['user_id']) ? User::forTenant($request->user()->tenant_id)->findOrFail($data['user_id']) : $request->user();

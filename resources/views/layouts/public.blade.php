@@ -27,7 +27,8 @@
       <li><a href="{{ route('pricing') }}">Pricing</a></li>
       <li><a href="{{ route('faq') }}">FAQ</a></li>
       <li><a href="{{ route('contact') }}">Contact</a></li>
-      @auth<li><a class="btn btn-primary btn-sm" href="{{ route('admin.dashboard') }}">Dashboard</a></li>@else<li><a class="btn btn-outline btn-sm" href="{{ route('login') }}">Login</a></li><li><a class="btn btn-primary btn-sm" href="{{ route('admin.login') }}">Admin Login</a></li>@endauth
+      @auth<li><a class="btn btn-primary btn-sm" href="{{ route('admin.dashboard') }}">Dashboard</a></li>@else<li><a class="btn btn-outline btn-sm" href="{{ route('login') }}">Login</a></li>@if($registrationOpen ?? true)<li><a class="btn btn-primary btn-sm" href="{{ route('register') }}">Sign up free</a></li>@endif
+      @endauth
     </ul>
   </nav>
 </header>

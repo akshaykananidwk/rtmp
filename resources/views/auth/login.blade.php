@@ -9,4 +9,5 @@
   <button class="btn btn-primary btn-block">Login</button>
 </form>
 <p class="small" style="margin-top:14px;text-align:center"><a href="{{ route('password.request') }}">Forgot password?</a></p>
+@if($registrationOpen ?? true)<p class="small" style="text-align:center">New here? <a href="{{ route('register') }}">Create a free account</a></p>@endif
 @endsection

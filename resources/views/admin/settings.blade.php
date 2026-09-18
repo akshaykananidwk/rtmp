@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Settings')
 @section('content')
-@php($tabs = ['general' => 'General', 'streaming' => 'Streaming', 'recording' => 'Recording', 'storage' => 'Storage', 'mail' => 'E-mail (SMTP)', 'security' => 'Security', 'platforms' => 'Platforms (API)', 'notifications' => 'Notifications', 'backups' => 'Backups'])
+@php($tabs = ['general' => 'General', 'streaming' => 'Streaming', 'registration' => 'Sign-ups', 'recording' => 'Recording', 'storage' => 'Storage', 'mail' => 'E-mail (SMTP)', 'security' => 'Security', 'platforms' => 'Platforms (API)', 'notifications' => 'Notifications', 'backups' => 'Backups'])
 <div class="tabs">@foreach($tabs as $k => $l)<a href="{{ route('admin.settings', ['tab' => $k]) }}" class="{{ $tab === $k ? 'active' : '' }}">{{ $l }}</a>@endforeach</div>
 @php($v = $values[$tab] ?? [])
 @php($dis = $canManage ? '' : 'disabled')
@@ -21,6 +21,12 @@
   <div class="field"><label class="check"><input type="checkbox" name="recording_enabled" value="1" {{ ($v['recording_enabled'] ?? '0') === '1' ? 'checked' : '' }} {{ $dis }}> Record every stream by default</label></div>
   <div class="alert alert-info small">Engine API: <span class="mono">{{ config('akstream.streaming.engine_api_url') }}</span> · internal RTMP: <span class="mono">{{ config('akstream.streaming.internal_rtmp_url') }}</span> · node <span class="mono">{{ config('akstream.streaming.node_id') }}</span> (from .env)</div>
 @break
+@case('registration')
+  <div class="field"><label class="check"><input type="checkbox" name="open" value="1" {{ ($v['open'] ?? '1') === '1' ? 'checked' : '' }} {{ $dis }}> Allow anyone to create an account at <span class="mono">{{ route('register') }}</span></label><div class="help">Turn this off to run a private install: existing users keep working, and the sign-up links disappear.</div></div>
+  <div class="form-row"><div class="field"><label>Plan given to new accounts</label><input type="text" name="default_plan" value="{{ $v['default_plan'] ?? 'free' }}" {{ $dis }}></div></div>
+  <div class="form-row"><div class="field"><label>Stream keys per account</label><input type="number" name="max_stream_keys" value="{{ $v['max_stream_keys'] ?? 3 }}" min="1" max="100" {{ $dis }}></div><div class="field"><label>Destinations per account</label><input type="number" name="max_destinations" value="{{ $v['max_destinations'] ?? 10 }}" min="1" max="100" {{ $dis }}><div class="help">Applies to accounts that signed up themselves; super admins are never limited.</div></div></div>
+  @break
+
 @case('recording')
   <div class="form-row"><div class="field"><label>Format</label><select name="format" {{ $dis }}>@foreach(['mp4','mkv','flv'] as $f)<option value="{{ $f }}" {{ ($v['format'] ?? 'mp4') === $f ? 'selected' : '' }}>{{ $f }}</option>@endforeach</select></div><div class="field"><label>Resolution</label><input type="text" name="resolution" value="{{ $v['resolution'] ?? 'source' }}" {{ $dis }}><div class="help">"source" = copy without re-encoding (recommended)</div></div></div>
   <div class="form-row"><div class="field"><label>Retention (days)</label><input type="number" name="retention_days" value="{{ $v['retention_days'] ?? 30 }}" {{ $dis }}></div><div class="field"><label>Max recording size (MB)</label><input type="number" name="max_size_mb" value="{{ $v['max_size_mb'] ?? 4096 }}" {{ $dis }}></div></div>

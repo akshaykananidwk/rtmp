@@ -4,7 +4,7 @@
   <h1>ONE LIVE EVERYWHERE</h1>
   <div class="sub">“Stream Once. Reach Everywhere.”</div>
   <p class="gu">OBSમાંથી એક જ જગ્યાએ Live કરો અને connected platforms પર એકસાથે Live પહોંચાડો. One RTMP stream from OBS, vMix or any encoder — automatically distributed to YouTube, Facebook and every RTMP destination you connect.</p>
-  <div class="cta"><a class="btn btn-primary btn-lg" href="{{ route('login') }}">▶ Start Streaming</a><a class="btn btn-outline btn-lg" href="{{ route('admin.login') }}">Login Dashboard</a></div>
+  <div class="cta">@if($registrationOpen ?? true)<a class="btn btn-primary btn-lg" href="{{ route('register') }}">▶ Start Streaming Free</a>@endif<a class="btn btn-outline btn-lg" href="{{ route('login') }}">Login Dashboard</a></div>
 </section>
 
 <section class="section container" id="how">

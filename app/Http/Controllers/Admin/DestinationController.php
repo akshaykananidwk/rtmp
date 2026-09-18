@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Domain\Accounts\PlanLimits;
 use App\Domain\Audit\AuditLogger;
 use App\Domain\Destinations\ConnectorRegistry;
 use App\Http\Controllers\Controller;
@@ -41,6 +42,11 @@ class DestinationController extends Controller
     public function store(DestinationRequest $request): RedirectResponse
     {
         $this->authorize('create', StreamDestination::class);
+
+        if (app(PlanLimits::class)->reached(PlanLimits::DESTINATIONS, $request->user())) {
+            return back()->withInput()->with('error', app(PlanLimits::class)->message(PlanLimits::DESTINATIONS));
+        }
+
         $destination = DB::transaction(function () use ($request) {
             $d = new StreamDestination;
             $this->fill($d, $request->validated());

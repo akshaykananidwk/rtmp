@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Domain\Accounts\RegistrationService;
 use App\Domain\Backups\BackupService;
 use App\Domain\Destinations\ConnectorRegistry;
 use App\Domain\Settings\SettingsService;
@@ -128,6 +129,9 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(StreamEventSubscriber::class);
 
         RateLimiter::for('login', fn (Request $r) => [Limit::perMinutes(15, 5)->by(strtolower((string) $r->input('email')).'|'.$r->ip()), Limit::perMinute(20)->by($r->ip())]);
+        // Sign-up is the one unauthenticated write that creates records, so it is the
+        // tightest: a handful per IP, and never a flood from one network.
+        RateLimiter::for('register', fn (Request $r) => [Limit::perHour(5)->by($r->ip()), Limit::perDay(20)->by($r->ip())]);
         RateLimiter::for('password-reset', fn (Request $r) => Limit::perMinutes(15, 5)->by($r->ip()));
         RateLimiter::for('api', fn (Request $r) => Limit::perMinute(120)->by($r->user()?->getAuthIdentifier() ?: $r->ip()));
         RateLimiter::for('api-control', fn (Request $r) => Limit::perMinute(20)->by($r->user()?->getAuthIdentifier() ?: $r->ip()));
@@ -139,6 +143,19 @@ class AppServiceProvider extends ServiceProvider
         View::composer('*', function ($view): void {
             $view->with('appVersion', Version::current());
             $view->with('brand', config('akstream.brand'));
+            // Sign-up links must disappear the moment the owner closes registration, so the
+            // flag is shared rather than looked up in each template. Before installation
+            // there is no database to ask, so assume closed.
+            $view->with('registrationOpen', $this->registrationIsOpen());
         });
+    }
+
+    private function registrationIsOpen(): bool
+    {
+        try {
+            return app(RegistrationService::class)->isOpen();
+        } catch (\Throwable) {
+            return false;
+        }
     }
 }
