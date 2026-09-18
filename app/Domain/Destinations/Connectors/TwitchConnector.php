@@ -40,6 +40,11 @@ class TwitchConnector extends AbstractConnector
             ],
             defaultRtmpUrl: self::INGEST,
             icon: '🎮',
+            setupSteps: [
+                'Press "Connect Twitch" above and approve access, or paste a stream key from dashboard.twitch.tv → Settings → Stream.',
+                'Pick the ingest server closest to you if you are editing the RTMP URL by hand.',
+                'Start streaming from OBS, then press START LIVE.',
+            ],
         );
     }
 

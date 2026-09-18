@@ -33,6 +33,12 @@ class LinkedInConnector extends CustomRtmpConnector
                 ['name' => 'stream_key', 'label' => 'Stream Key', 'type' => 'password', 'required' => true],
             ],
             icon: '💼',
+            setupSteps: [
+                'LinkedIn Live must be approved for your profile or page before any of this works — apply first.',
+                'Once approved, create the live event on LinkedIn and choose a custom streaming tool.',
+                'Copy the RTMP URL and stream key LinkedIn gives you and paste them below.',
+                'Start streaming from OBS, then press START LIVE.',
+            ],
         );
     }
 }

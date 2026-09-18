@@ -35,6 +35,13 @@ class InstagramConnector extends CustomRtmpConnector
             ],
             icon: '📸',
             docsUrl: 'https://help.instagram.com/',
+            setupSteps: [
+                'On a phone or at instagram.com, make sure the account is a Professional account (Creator or Business) — Live Producer is not offered on personal accounts.',
+                'Open instagram.com on a computer, sign in, then choose Create → Live. If "Live Producer" is not offered, Instagram has not enabled it for this account and there is no supported way around that.',
+                'Live Producer shows a Stream URL and a Stream Key. Copy them.',
+                'Paste the Stream URL into RTMPS URL below and the Stream Key into Stream Key, then save.',
+                'Start streaming from OBS, press START LIVE here, and then press "Go live" in Live Producer — Instagram will not publish until you press it there.',
+            ],
         );
     }
 }

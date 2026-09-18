@@ -30,6 +30,12 @@ class CustomRtmpConnector extends AbstractConnector
                 ['name' => 'stream_key', 'label' => 'Stream Key', 'type' => 'password', 'required' => true],
             ],
             icon: '📡',
+            setupSteps: [
+                'Find the RTMP (or RTMPS) server URL and stream key in the platform you want to send to.',
+                'Paste the server URL into RTMP URL — without the key on the end — and the key into Stream Key.',
+                'Save, then press Test to check the server accepts a connection before you go live.',
+                'Start streaming from OBS, then press START LIVE.',
+            ],
         );
     }
 

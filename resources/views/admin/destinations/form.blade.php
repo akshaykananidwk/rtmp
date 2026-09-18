@@ -8,7 +8,18 @@
       <div class="field"><label>Name</label><input type="text" name="name" value="{{ old('name', $destination->name) }}" required maxlength="100" placeholder="My YouTube channel"></div>
     </div>
     @foreach($definitions as $def)
-      <div data-platform-info="{{ $def->name }}" class="alert {{ $def->support === 'supported' ? 'alert-info' : 'alert-warning' }} small">{{ $def->description }}</div>
+      <div data-platform-info="{{ $def->name }}">
+        <div class="alert {{ $def->support === 'supported' ? 'alert-info' : 'alert-warning' }} small">{{ $def->description }}</div>
+        @if($def->setupSteps)
+          <details class="card" style="margin:0 0 16px;padding:12px 14px" {{ $def->support === 'supported' ? '' : 'open' }}>
+            <summary style="cursor:pointer;font-weight:600">{{ $def->icon }} How to set up {{ $def->label }} — step by step</summary>
+            <ol style="margin:10px 0 0 18px;padding:0;line-height:1.7" class="small">
+              @foreach($def->setupSteps as $step)<li>{{ $step }}</li>@endforeach
+            </ol>
+            @if($def->docsUrl)<div class="help" style="margin-top:8px">Official documentation: <a href="{{ $def->docsUrl }}" target="_blank" rel="noopener">{{ $def->docsUrl }}</a></div>@endif
+          </details>
+        @endif
+      </div>
     @endforeach
     <div class="form-row">
       <div class="field"><label>Bind to stream key (optional)</label><select name="stream_endpoint_id"><option value="">All stream keys</option>@foreach($endpoints as $e)<option value="{{ $e->id }}" {{ old('stream_endpoint_id', $destination->stream_endpoint_id) === $e->id ? 'selected' : '' }}>{{ $e->name }}</option>@endforeach</select><div class="help">Leave empty to use this destination for every stream key.</div></div>

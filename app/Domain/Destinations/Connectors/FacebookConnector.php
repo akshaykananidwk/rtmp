@@ -42,6 +42,12 @@ class FacebookConnector extends AbstractConnector
             defaultRtmpUrl: 'rtmps://live-api-s.facebook.com:443/rtmp',
             icon: '📘',
             docsUrl: 'https://developers.facebook.com/docs/live-video-api',
+            setupSteps: [
+                'Press "Connect Facebook" above and approve the permissions — this creates the destination for you.',
+                'If you manage more than one Page, choose which Page to go live on and save.',
+                'Start streaming from OBS, then press START LIVE. The Live video is created on the Page through the official API.',
+                'No stream key to copy: the key is fetched per broadcast and never shown or stored in plain text.',
+            ],
         );
     }
 

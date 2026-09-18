@@ -48,6 +48,12 @@ class YouTubeConnector extends AbstractConnector
             defaultRtmpUrl: 'rtmp://a.rtmp.youtube.com/live2',
             icon: '▶️',
             docsUrl: 'https://developers.google.com/youtube/v3/live/getting-started',
+            setupSteps: [
+                'Enable live streaming in YouTube Studio first — after phone verification YouTube makes you wait 24 hours before the first live stream.',
+                'Press "Connect YouTube" above and approve access.',
+                'Start streaming from OBS, then press START LIVE. The broadcast is created, bound and switched to live through the official API.',
+                'If you would rather not connect an account, leave it unconnected and paste a stream key from YouTube Studio → Go Live → Stream instead.',
+            ],
         );
     }
 

@@ -241,4 +241,29 @@ class DestinationConnectorTest extends TestCase
             ->assertOk()
             ->assertSee('The RTMP URL must look like');
     }
+
+    public function test_each_platform_carries_honest_setup_steps(): void
+    {
+        [$tenant, $user] = $this->adminSetup();
+        $this->actingAs($user);
+
+        $definitions = app(ConnectorRegistry::class)->definitions();
+        foreach ($definitions as $name => $definition) {
+            $this->assertNotEmpty($definition->setupSteps, $name.' needs setup steps an operator can follow');
+        }
+
+        $page = $this->get('/admin/destinations/create')->assertOk();
+
+        // Instagram offers no third-party API for going live, so the steps say what to do
+        // by hand and say plainly that there is no supported way around it.
+        $page->assertSee('Live Producer shows a Stream URL and a Stream Key', false);
+        $this->assertStringContainsString(
+            'there is no supported way around that',
+            $definitions['instagram']->setupSteps[1],
+        );
+        $page->assertSee('NOT SUPPORTED BY CURRENT OFFICIAL API', false);
+
+        // Facebook needs no key pasted anywhere: the official API provides it per broadcast.
+        $this->assertStringContainsString('No stream key to copy', implode(' ', $definitions['facebook']->setupSteps));
+    }
 }
