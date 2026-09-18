@@ -151,6 +151,25 @@ fi
 
 chmod +x "$APP_DIR"/scripts/*.sh 2>/dev/null || true
 
+# Record which commit these files came from, and point the panel's own updater at this
+# repository and branch. Without both, Admin -> Updates has nothing to check against:
+# the repository setting is empty out of the box and the branch defaults to "main".
+SHA=""
+if SHA_JSON="$(curl -fsSL "${AUTH[@]}" "https://api.github.com/repos/$REPO/commits/$BRANCH" 2>/dev/null)"; then
+  SHA="$(printf '%s' "$SHA_JSON" | sed -n 's/.*"sha"[[:space:]]*:[[:space:]]*"\([0-9a-f]\{40\}\)".*/\1/p' | head -1)"
+fi
+if [[ -n "$SHA" ]]; then
+  printf '%s' "$SHA" > "$APP_DIR/COMMIT"
+  chown "$OWNER":"$OWNER" "$APP_DIR/COMMIT" 2>/dev/null || true
+  echo "==> Recorded commit ${SHA:0:7}"
+else
+  echo "!!  Could not read the commit id from GitHub (the panel's update diff will be limited)"
+fi
+
+if [[ -n "$PHPBIN" ]] && [[ -f storage/app/installed.lock ]]; then
+  run_artisan updates:source "$REPO" "$BRANCH" || echo "!!  Could not set the update source (set it in Admin -> Updates)"
+fi
+
 # Re-render the service units when they changed (they now launch through run-artisan.sh,
 # which re-enables the functions PHP needs for THIS process only, leaving php.ini alone).
 UNITS_CHANGED=0

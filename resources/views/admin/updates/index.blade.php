@@ -7,6 +7,9 @@
 @if($missingEnv)<div class="alert alert-warning"><strong>New configuration keys detected</strong> (not in your .env; safe defaults in use): <span class="mono">{{ implode(', ', $missingEnv) }}</span>. Review Settings.</div>@endif
 <div class="grid grid-2" style="margin-bottom:18px">
   <div class="card"><h3>GitHub repository</h3>
+    @unless($repository)
+      <div class="alert alert-warning small">In-panel updates are off until this is filled in — a fresh install ships with no repository and a branch of <span class="mono">main</span>. Enter the repository and the branch this copy was installed from, then Save.</div>
+    @endunless
     <form method="post" action="{{ route('admin.updates.settings') }}">@csrf
       <div class="field"><label>Repository</label><input type="text" name="repository" value="{{ old('repository', $repository) }}" placeholder="username/project" {{ $canManage ? '' : 'disabled' }}></div>
       <div class="field"><label>Branch</label><input type="text" name="branch" value="{{ old('branch', $branch) }}" placeholder="main" {{ $canManage ? '' : 'disabled' }}></div>
