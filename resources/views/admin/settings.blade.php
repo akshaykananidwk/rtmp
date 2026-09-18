@@ -25,6 +25,7 @@
   <div class="field"><label class="check"><input type="checkbox" name="open" value="1" {{ ($v['open'] ?? '1') === '1' ? 'checked' : '' }} {{ $dis }}> Allow anyone to create an account at <span class="mono">{{ route('register') }}</span></label><div class="help">Turn this off to run a private install: existing users keep working, and the sign-up links disappear.</div></div>
   <div class="form-row"><div class="field"><label>Plan given to new accounts</label><input type="text" name="default_plan" value="{{ $v['default_plan'] ?? 'free' }}" {{ $dis }}></div></div>
   <div class="form-row"><div class="field"><label>Stream keys per account</label><input type="number" name="max_stream_keys" value="{{ $v['max_stream_keys'] ?? 3 }}" min="1" max="100" {{ $dis }}></div><div class="field"><label>Destinations per account</label><input type="number" name="max_destinations" value="{{ $v['max_destinations'] ?? 10 }}" min="1" max="100" {{ $dis }}><div class="help">Applies to accounts that signed up themselves; super admins are never limited.</div></div></div>
+  <div class="form-row"><div class="field"><label>Streaming minutes per month</label><input type="number" name="max_monthly_minutes" value="{{ $v['max_monthly_minutes'] ?? 0 }}" min="0" max="1000000" {{ $dis }}><div class="help"><strong>0 = unlimited.</strong> Counted per calendar month and enforced when a stream is started, from the panel and the API alike. A stream already running is never cut off mid-broadcast.</div></div></div>
   @break
 
 @case('recording')

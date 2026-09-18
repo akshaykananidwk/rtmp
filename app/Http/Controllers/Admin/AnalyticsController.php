@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Domain\Accounts\UsageService;
 use App\Domain\Analytics\AnalyticsService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -17,6 +18,10 @@ class AnalyticsController extends Controller
         $days = (int) $request->query('days', 30);
         $days = in_array($days, [7, 30, 90], true) ? $days : 30;
 
-        return view('admin.analytics', ['data' => $analytics->overview($days), 'days' => $days]);
+        return view('admin.analytics', [
+            'data' => $analytics->overview($days),
+            'days' => $days,
+            'usage' => app(UsageService::class)->summary(),
+        ]);
     }
 }

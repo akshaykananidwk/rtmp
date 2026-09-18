@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Accounts\UsageService;
 use App\Domain\Streaming\DistributionService;
 use App\Http\Controllers\Controller;
 use App\Models\StreamDestination;
@@ -38,6 +39,12 @@ class StreamController extends Controller
         $session = StreamSession::whereIn('status', ['detected', 'live'])->latest('started_at')->first();
         if (! $session) {
             return response()->json(['message' => 'No incoming stream detected.'], 409);
+        }
+
+        // The same allowance as the panel, so the API is not a way around it.
+        $usage = app(UsageService::class);
+        if ($usage->exceeded($request->user())) {
+            return response()->json(['message' => $usage->exceededMessage()], 402);
         }
         $destinations = ! empty($data['destination_ids']) ? StreamDestination::whereIn('id', $data['destination_ids'])->get() : null;
         $created = $this->distribution->start($session, $destinations, $request->user());

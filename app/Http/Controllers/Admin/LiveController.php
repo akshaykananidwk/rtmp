@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Domain\Accounts\UsageService;
 use App\Domain\Streaming\DistributionService;
 use App\Domain\Streaming\Engines\StreamEngineInterface;
 use App\Http\Controllers\Controller;
@@ -41,6 +42,13 @@ class LiveController extends Controller
         $session = StreamSession::whereIn('status', ['detected', 'live'])->latest('started_at')->first();
         if (! $session) {
             return back()->with('error', 'No incoming stream detected. Start streaming from OBS first, then press Start Distribution.');
+        }
+
+        // A monthly allowance is only real if it stops something; refuse here, where the
+        // operator is present to read why, rather than failing silently in the supervisor.
+        $usage = app(UsageService::class);
+        if ($usage->exceeded($request->user())) {
+            return back()->with('error', $usage->exceededMessage());
         }
 
         $destinations = ! empty($data['destination_ids']) ? StreamDestination::whereIn('id', $data['destination_ids'])->get() : null;

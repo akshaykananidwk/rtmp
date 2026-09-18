@@ -3,6 +3,23 @@
 @section('content')
 @php($h = \App\Domain\Analytics\AnalyticsService::class)
 <div class="tabs">@foreach([7, 30, 90] as $d)<a href="{{ route('admin.analytics', ['days' => $d]) }}" class="{{ $days === $d ? 'active' : '' }}">Last {{ $d }} days</a>@endforeach</div>
+<div class="card" style="margin-bottom:18px">
+  <div class="card-header"><h3>This month's usage</h3><span class="small muted">since {{ $usage['period_start'] }}</span></div>
+  <div class="grid grid-4">
+    <div><div class="small muted">Streams</div><div style="font-size:22px;font-weight:700">{{ $usage['streams'] }}</div></div>
+    <div><div class="small muted">Streaming minutes</div><div style="font-size:22px;font-weight:700">{{ number_format($usage['minutes_used']) }}@if($usage['minutes_allowed'] > 0)<span class="small muted"> / {{ number_format($usage['minutes_allowed']) }}</span>@endif</div></div>
+    <div><div class="small muted">Sent to platforms</div><div style="font-size:22px;font-weight:700">{{ $h::humanBytes($usage['bytes_sent']) }}</div></div>
+    <div><div class="small muted">Recordings</div><div style="font-size:22px;font-weight:700">{{ $usage['recordings'] }}<span class="small muted"> · {{ $h::humanBytes($usage['recording_bytes']) }}</span></div></div>
+  </div>
+  @if($usage['minutes_allowed'] > 0)
+    <div style="margin-top:12px;height:8px;background:var(--border);border-radius:4px;overflow:hidden">
+      <div style="height:100%;width:{{ $usage['percent_used'] }}%;background:{{ $usage['percent_used'] >= 90 ? 'var(--danger,#e35)' : 'var(--primary,#4c7dff)' }}"></div>
+    </div>
+    <div class="small muted" style="margin-top:6px">{{ number_format($usage['minutes_left']) }} minutes left this month. The allowance resets on the 1st.</div>
+  @else
+    <div class="small muted" style="margin-top:12px">No monthly limit is set on this server.</div>
+  @endif
+</div>
 <div class="grid grid-4" style="margin-bottom:18px">
   <div class="card"><div class="stat"><span class="label">Total streams</span><span class="value">{{ $data['total_streams'] }}</span></div></div>
   <div class="card"><div class="stat"><span class="label">Total duration</span><span class="value sm">{{ $h::humanDuration($data['total_duration']) }}</span></div></div>

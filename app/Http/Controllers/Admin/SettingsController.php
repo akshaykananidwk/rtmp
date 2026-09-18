@@ -150,6 +150,7 @@ class SettingsController extends Controller
                 'default_plan' => ['required', 'string', 'max:40'],
                 'max_stream_keys' => ['required', 'integer', 'min:1', 'max:100'],
                 'max_destinations' => ['required', 'integer', 'min:1', 'max:100'],
+                'max_monthly_minutes' => ['required', 'integer', 'min:0', 'max:1000000'],
             ],
             'security' => [
                 'session_timeout' => ['required', 'integer', 'min:5', 'max:1440'],
