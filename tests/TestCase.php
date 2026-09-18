@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests;
 
+use App\Domain\Destinations\DestinationReachability;
 use App\Domain\Tenancy\TenantContext;
 use App\Models\Role;
 use App\Models\Tenant;
@@ -57,5 +58,29 @@ abstract class TestCase extends BaseTestCase
         $user = $this->makeUser($tenant, $role);
 
         return [$tenant, $user];
+    }
+
+    /**
+     * Pretend every destination host is reachable.
+     *
+     * Testing a destination now opens a real socket, which is the point of that feature but
+     * not of tests about anything else — those would otherwise depend on DNS.
+     */
+    protected function pretendDestinationsAreReachable(): void
+    {
+        $this->app->bind(DestinationReachability::class, fn () => new class extends DestinationReachability
+        {
+            public function check(string $url): array
+            {
+                return [
+                    'ok' => true,
+                    'stage' => 'reachable',
+                    'message' => 'RTMP URL looks valid',
+                    'host' => parse_url($url, PHP_URL_HOST) ?: null,
+                    'port' => 1935,
+                    'tls' => str_starts_with(strtolower($url), 'rtmps://'),
+                ];
+            }
+        });
     }
 }

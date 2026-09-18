@@ -14,6 +14,7 @@ class ApiTest extends TestCase
 
     public function test_login_token_and_protected_endpoints(): void
     {
+        $this->pretendDestinationsAreReachable();
         [$tenant, $user] = $this->adminSetup();
         $this->postJson('/api/v1/auth/login', ['email' => $user->email, 'password' => 'bad'])->assertStatus(401);
         $r = $this->postJson('/api/v1/auth/login', ['email' => $user->email, 'password' => 'Str0ng!Password#2026', 'device_name' => 'test'])->assertOk();

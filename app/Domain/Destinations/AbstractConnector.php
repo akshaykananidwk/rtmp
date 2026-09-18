@@ -89,6 +89,10 @@ abstract class AbstractConnector implements StreamingDestinationInterface
             return ['ok' => false, 'message' => 'Invalid host'];
         }
 
-        return ['ok' => true, 'message' => 'RTMP URL looks valid'];
+        // A shape check alone made Test pass for a destination this server cannot even
+        // reach, so the failure only turned up later, mid-broadcast.
+        $reach = app(DestinationReachability::class)->check($url);
+
+        return ['ok' => $reach['ok'], 'message' => $reach['message']];
     }
 }

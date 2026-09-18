@@ -32,6 +32,7 @@ class DestinationConnectorTest extends TestCase
 
     public function test_custom_rtmp_validation_and_target(): void
     {
+        $this->pretendDestinationsAreReachable();
         [$tenant, $user] = $this->adminSetup();
         $this->actAsTenant($tenant);
         $d = StreamDestination::factory()->create(['tenant_id' => $tenant->id, 'rtmp_url' => 'rtmp://live.example.com/app']);
@@ -108,6 +109,7 @@ class DestinationConnectorTest extends TestCase
 
     public function test_destination_form_crud(): void
     {
+        $this->pretendDestinationsAreReachable();
         [$tenant, $user] = $this->adminSetup();
         $this->actingAs($user);
         $this->get('/admin/destinations/create?platform=custom_rtmp')->assertOk()->assertSee('RTMP URL');

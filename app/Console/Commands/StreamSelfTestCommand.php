@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Domain\Accounts\UsageService;
+use App\Domain\Destinations\DestinationReachability;
 use App\Domain\Streaming\DistributionService;
 use App\Domain\Streaming\Engines\StreamEngineInterface;
 use App\Domain\Streaming\Relay\SupervisorRequirements;
@@ -239,8 +240,54 @@ class StreamSelfTestCommand extends Command
         }
 
         $total = StreamSessionDestination::withoutGlobalScopes()->where('stream_session_id', $session->id)->count();
-        $this->record('Destinations went live', $live === $total && $total > 0,
-            $live.' of '.$total.' live'.($errors ? ' — '.SecretMasker::maskString(implode(' | ', array_unique($errors))) : ''));
+        $this->record('Destinations went live', $live === $total && $total > 0, $live.' of '.$total.' live');
+
+        if ($live < $total) {
+            $this->diagnoseDestinations($session);
+        }
+    }
+
+    /**
+     * Say why each destination failed in terms the operator can act on.
+     *
+     * FFmpeg reports a blocked firewall, a broken TLS chain and a rejected stream key all
+     * as "Operation not permitted", so the raw error alone is not worth printing.
+     */
+    private function diagnoseDestinations(StreamSession $session): void
+    {
+        $this->line('');
+        $this->line('  Why each destination failed:');
+
+        $rows = StreamSessionDestination::withoutGlobalScopes()
+            ->with(['destination' => fn ($q) => $q->withoutGlobalScopes()])
+            ->where('stream_session_id', $session->id)
+            ->get();
+
+        foreach ($rows as $sd) {
+            $name = $sd->destination?->name ?? 'Destination';
+
+            if ($sd->status === 'live') {
+                $this->line('    <fg=green>✓</> '.$name.' — live');
+
+                continue;
+            }
+
+            $url = $sd->destination?->rtmp_url;
+            if (! $url) {
+                $this->line('    <fg=red>✗</> '.$name.' — no RTMP URL configured');
+
+                continue;
+            }
+
+            $reach = app(DestinationReachability::class)->check($url);
+            $this->line('    <fg=red>✗</> '.$name.' — '.$reach['message']);
+
+            if ($sd->last_error) {
+                $this->line('        ffmpeg said: '.SecretMasker::maskString(mb_substr($sd->last_error, 0, 160)));
+            }
+        }
+
+        $this->line('');
     }
 
     private function checkOverlay(StreamSession $session): void
