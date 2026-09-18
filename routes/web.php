@@ -64,6 +64,7 @@ Route::middleware('installed')->group(function (): void {
         // Overlays (news-style branding burned into the stream)
         Route::resource('overlays', Admin\OverlayController::class)->except(['show']);
         Route::post('/overlays/assign', [Admin\OverlayController::class, 'assign'])->name('overlays.assign');
+        Route::get('/overlays/image/{path}', [Admin\OverlayController::class, 'image'])->name('overlays.image');
 
         // Live preview (authenticated HLS proxy)
         Route::get('/preview/{endpoint}/status', [Admin\PreviewController::class, 'status'])->middleware('throttle:status')->name('preview.status');

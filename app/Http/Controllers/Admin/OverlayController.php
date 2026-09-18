@@ -13,6 +13,7 @@ use App\Models\StreamSession;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -125,6 +126,28 @@ class OverlayController extends Controller
             : 'Overlay removed from '.$endpoint->name.'.');
     }
 
+    /** Streams a logo back to the editor so it can be positioned on the canvas. */
+    public function image(Request $request, string $path)
+    {
+        $this->authorize('viewAny', Overlay::class);
+
+        $relative = base64_decode($path, true);
+        abort_unless(is_string($relative) && preg_match('#^overlays/images/[A-Za-z0-9]+\.(png|jpe?g|webp)$#', $relative), 404);
+
+        $disk = Storage::disk('local');
+        abort_unless($disk->exists($relative), 404);
+
+        // Only images belonging to this tenant's overlays may be read
+        $owned = Overlay::get()->contains(fn (Overlay $o) => collect($o->elements())->contains(fn ($el) => ($el['image'] ?? null) === $relative));
+        abort_unless($owned, 404);
+
+        return response($disk->get($relative), 200, [
+            'Content-Type' => $disk->mimeType($relative) ?: 'image/png',
+            'Cache-Control' => 'private, max-age=300',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
     private function form(Overlay $overlay): View
     {
         return view('admin.overlays.form', [
@@ -158,7 +181,14 @@ class OverlayController extends Controller
             'elements.*.text' => ['nullable', 'string', 'max:500'],
             'elements.*.format' => ['nullable', 'string', 'max:20'],
             'elements.*.position' => ['nullable', 'in:'.implode(',', array_keys(OverlayRenderer::POSITIONS))],
+            'elements.*.locked' => ['nullable', 'boolean'],
             'elements.*.size' => ['nullable', 'integer', 'min:8', 'max:200'],
+            // geometry written by the visual editor, as a percentage of the frame
+            'elements.*.x_pct' => ['nullable', 'numeric', 'min:-20', 'max:110'],
+            'elements.*.y_pct' => ['nullable', 'numeric', 'min:-20', 'max:110'],
+            'elements.*.w_pct' => ['nullable', 'numeric', 'min:0.5', 'max:200'],
+            'elements.*.h_pct' => ['nullable', 'numeric', 'min:0.2', 'max:100'],
+            'elements.*.size_pct' => ['nullable', 'numeric', 'min:0.5', 'max:30'],
             'elements.*.color' => ['nullable', 'string', 'max:20'],
             'elements.*.background' => ['nullable', 'string', 'max:20'],
             'elements.*.background_opacity' => ['nullable', 'numeric', 'min:0', 'max:1'],
@@ -174,6 +204,7 @@ class OverlayController extends Controller
         $elements = [];
         foreach ($data['elements'] ?? [] as $i => $element) {
             $element['enabled'] = (bool) ($element['enabled'] ?? false);
+            $element['locked'] = (bool) ($element['locked'] ?? false);
 
             if ($element['type'] === 'image') {
                 $uploaded = $request->file("elements.$i.image_file");
@@ -206,10 +237,10 @@ class OverlayController extends Controller
     public static function sampleElements(): array
     {
         return [
-            ['type' => 'box', 'enabled' => true, 'position' => 'bottom_left', 'color' => '#0b0f1a', 'opacity' => 0.75, 'width' => 'iw', 'height' => 110, 'margin' => 0],
-            ['type' => 'text', 'enabled' => true, 'text' => 'AK COMPUTER LIVE', 'position' => 'bottom_left', 'size' => 46, 'color' => '#ffffff', 'margin' => 40],
-            ['type' => 'ticker', 'enabled' => true, 'text' => 'Welcome to our live broadcast  •  Dwarka, Gujarat  •  Subscribe for more', 'position' => 'bottom_left', 'size' => 30, 'color' => '#a5f3fc', 'margin' => 12, 'speed' => 120],
-            ['type' => 'clock', 'enabled' => true, 'format' => 'd-m-Y H:i', 'position' => 'top_right', 'size' => 34, 'color' => '#ffffff', 'background' => '#000000', 'background_opacity' => 0.5, 'margin' => 30],
+            ['type' => 'box', 'enabled' => true, 'x_pct' => 0, 'y_pct' => 80, 'w_pct' => 100, 'h_pct' => 14, 'color' => '#0b0f1a', 'opacity' => 0.75],
+            ['type' => 'text', 'enabled' => true, 'text' => 'AK COMPUTER LIVE', 'x_pct' => 4, 'y_pct' => 82, 'size_pct' => 4.5, 'color' => '#ffffff'],
+            ['type' => 'ticker', 'enabled' => true, 'text' => 'Welcome to our live broadcast  •  Dwarka, Gujarat  •  Subscribe for more', 'x_pct' => 0, 'y_pct' => 91, 'size_pct' => 2.8, 'color' => '#a5f3fc', 'speed' => 120],
+            ['type' => 'clock', 'enabled' => true, 'format' => 'd-m-Y H:i', 'x_pct' => 78, 'y_pct' => 4, 'size_pct' => 3.2, 'color' => '#ffffff', 'background' => '#000000', 'background_opacity' => 0.5],
         ];
     }
 }

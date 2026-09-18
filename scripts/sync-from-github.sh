@@ -82,6 +82,29 @@ fi
 
 # shellcheck source=/dev/null
 [[ -f scripts/lib-detect.sh ]] && source scripts/lib-detect.sh
+# The media server config ships with the app; an old copy on disk silently breaks
+# features added later (the branded/ path used by overlays, for example).
+if [[ -f /etc/mediamtx/mediamtx.yml && -f scripts/mediamtx/mediamtx.yml ]]; then
+  APP_URL_ENV="$(grep -E '^APP_URL=' .env 2>/dev/null | cut -d= -f2- | tr -d '\"' || true)"
+  SECRET_ENV="$(grep -E '^STREAM_ENGINE_SECRET=' .env 2>/dev/null | cut -d= -f2- | tr -d '\"' || true)"
+  if [[ -n "$APP_URL_ENV" && -n "$SECRET_ENV" ]]; then
+    RENDERED="$(mktemp)"
+    sed -e "s#__APP_URL__#${APP_URL_ENV%/}#g" -e "s#__ENGINE_SECRET__#$SECRET_ENV#g" scripts/mediamtx/mediamtx.yml > "$RENDERED"
+    if ! diff -q "$RENDERED" /etc/mediamtx/mediamtx.yml >/dev/null 2>&1; then
+      echo "==> Updating the streaming engine configuration"
+      cp -p /etc/mediamtx/mediamtx.yml "/etc/mediamtx/mediamtx.yml.bak-$(date +%Y%m%d%H%M%S)" 2>/dev/null || true
+      if command -v mediamtx >/dev/null && timeout 5 mediamtx "$RENDERED" 2>&1 | head -3 | grep -qiE '^ERR|unknown field'; then
+        echo "!!  new configuration rejected by MediaMTX – keeping the old one"
+      else
+        cat "$RENDERED" > /etc/mediamtx/mediamtx.yml
+        chown mediamtx:mediamtx /etc/mediamtx/mediamtx.yml 2>/dev/null || true
+        systemctl restart mediamtx 2>/dev/null && echo "    mediamtx restarted with the new configuration" || echo "    !! restart mediamtx manually"
+      fi
+    fi
+    rm -f "$RENDERED"
+  fi
+fi
+
 OWNER="$(detect_web_user 2>/dev/null || echo www-data)"
 if [[ "$OWNER" == "root" ]]; then
   echo "!!  Could not detect the web-server user; leaving ownership unchanged."
@@ -125,6 +148,12 @@ else
   echo "!!  PHP binary not found – run these manually:"
   echo "      php artisan migrate --force && php artisan optimize:clear"
 fi
+
+for unit in akstream-supervisor akstream-queue; do
+  if systemctl is-enabled --quiet "$unit" 2>/dev/null; then
+    systemctl restart "$unit" 2>/dev/null && echo "==> Restarted $unit" || echo "!!  Could not restart $unit"
+  fi
+done
 
 echo
 echo "=============================================================="

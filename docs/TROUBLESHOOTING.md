@@ -203,3 +203,23 @@ return false — it raises an error. Every filesystem probe in the application i
 Streaming Engine health check shows a warning. Relays run from the CLI worker, which is normally
 unrestricted, so streaming itself is unaffected. To clear the warning:
 `sudo bash scripts/fix-open-basedir.sh /path/to/app`.
+
+## The overlay never appears in the live stream
+
+The overlay is rendered into a second stream (`branded/<key>`) that the destinations copy. If the
+media server configuration on disk predates the overlay feature it does not declare that path, the
+encoder cannot publish, and the picture silently stays unbranded.
+
+```bash
+sudo bash scripts/doctor.sh /path/to/app     # "branded/ path: MISSING" says exactly this
+sudo bash scripts/sync-from-github.sh /path/to/app
+```
+
+The sync script now re-renders `/etc/mediamtx/mediamtx.yml` from the shipped template whenever it
+differs (keeping a timestamped backup, validating before replacing) and restarts the engine.
+
+Also check, in that order:
+1. `akstream-supervisor` is running — it is the process that renders overlays.
+2. The stream key has an overlay applied (Overlays → *Which stream key uses which overlay*).
+3. `Live Stream → Live preview` — untick *show source* to see the branded output.
+4. The overlay has at least one enabled element.

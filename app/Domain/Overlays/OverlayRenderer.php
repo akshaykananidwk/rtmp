@@ -21,6 +21,10 @@ use Illuminate\Support\Facades\Storage;
  */
 class OverlayRenderer
 {
+    private int $frameWidth = 1920;
+
+    private int $frameHeight = 1080;
+
     public const POSITIONS = [
         'top_left' => 'Top left', 'top_center' => 'Top center', 'top_right' => 'Top right',
         'middle_left' => 'Middle left', 'center' => 'Center', 'middle_right' => 'Middle right',
@@ -126,8 +130,8 @@ class OverlayRenderer
         $this->syncTextFiles($overlay);
         $font = $this->font();
         $dir = $this->textDirectory($overlay);
-        $w = $overlay->width();
-        $h = $overlay->height();
+        $w = $this->frameWidth = $overlay->width();
+        $h = $this->frameHeight = $overlay->height();
 
         $inputs = [];          // extra -i files (images)
         $chain = [];           // filters applied to the video
@@ -136,7 +140,9 @@ class OverlayRenderer
 
         foreach ($elements as $i => $el) {
             $type = (string) $el['type'];
-            $size = max(8, (int) ($el['size'] ?? 42));
+            $size = self::hasPercent($el, 'size')
+                ? max(8, (int) round($this->frameHeight * self::percent($el, 'size') / 100))
+                : max(8, (int) ($el['size'] ?? 42));
 
             if ($type === 'image') {
                 $path = $this->imagePath($el['image'] ?? null);
@@ -146,14 +152,14 @@ class OverlayRenderer
                 $inputs[] = $path;
                 // The overlay filter exposes W/H for the video and w/h for the logo
                 [$ox, $oy] = $this->position($el, 'overlay');
-                $overlays[] = ['index' => count($inputs), 'x' => $ox, 'y' => $oy, 'width' => max(16, (int) ($el['width'] ?? 200)), 'opacity' => $this->opacity($el)];
+                $overlays[] = ['index' => count($inputs), 'x' => $ox, 'y' => $oy, 'width' => $this->elementWidth($el, 200), 'opacity' => $this->opacity($el)];
 
                 continue;
             }
 
             if ($type === 'box') {
-                $boxWidth = (string) ($el['width'] ?? 'iw');
-                $boxHeight = max(2, (int) ($el['height'] ?? 90));
+                $boxWidth = self::hasPercent($el, 'w') ? (string) $this->elementWidth($el, 200) : (string) ($el['width'] ?? 'iw');
+                $boxHeight = $this->elementHeight($el, 90);
                 [$bx, $by] = $this->position($el, 'box', $boxWidth, (string) $boxHeight);
                 $chain[] = sprintf(
                     'drawbox=x=%s:y=%s:w=%s:h=%d:color=%s@%.2f:t=fill',
@@ -253,6 +259,10 @@ class OverlayRenderer
     /**
      * Position expressions for the filter that will consume them.
      *
+     * The editor stores x/y/w/h as percentages of the frame, so a layout survives a
+     * change of output resolution. Older overlays that only have a named position
+     * (bottom_left …) still work through the fallback below.
+     *
      *  text    drawtext : tw/th are the text size
      *  box     drawbox  : has no tw/th, so the element's own width/height are used
      *  overlay overlay  : W/H is the video, w/h is the logo
@@ -261,18 +271,29 @@ class OverlayRenderer
      */
     private function position(array $el, string $kind, string $elementWidth = '0', string $elementHeight = '0'): array
     {
-        $margin = max(0, (int) ($el['margin'] ?? 40));
-        $position = (string) ($el['position'] ?? 'bottom_left');
+        $frameW = $this->frameWidth;
+        $frameH = $this->frameHeight;
 
+        // Exact placement from the visual editor
+        if (self::hasPercent($el, 'x') && self::hasPercent($el, 'y')) {
+            return [
+                (string) (int) round($frameW * self::percent($el, 'x') / 100),
+                (string) (int) round($frameH * self::percent($el, 'y') / 100),
+            ];
+        }
+
+        // Legacy absolute pixels
         if (isset($el['x'], $el['y']) && $el['x'] !== '' && $el['y'] !== '') {
             return [(string) (int) $el['x'], (string) (int) $el['y']];
         }
 
-        // Full-width bars always start at the left edge
+        $margin = max(0, (int) ($el['margin'] ?? 40));
+        $position = (string) ($el['position'] ?? 'bottom_left');
+
         if ($kind === 'box' && $elementWidth === 'iw') {
             $x = '0';
         } else {
-            [$own, $frameW] = match ($kind) {
+            [$own, $frame] = match ($kind) {
                 'text' => ['tw', 'w'],
                 'box' => [$elementWidth, 'iw'],
                 default => ['w', 'W'],
@@ -280,12 +301,12 @@ class OverlayRenderer
 
             $x = match (true) {
                 str_ends_with($position, '_left') => (string) $margin,
-                str_ends_with($position, '_right') => sprintf('%s-%s-%d', $frameW, $own, $margin),
-                default => sprintf('(%s-%s)/2', $frameW, $own),
+                str_ends_with($position, '_right') => sprintf('%s-%s-%d', $frame, $own, $margin),
+                default => sprintf('(%s-%s)/2', $frame, $own),
             };
         }
 
-        [$ownH, $frameH] = match ($kind) {
+        [$ownH, $frameHExpr] = match ($kind) {
             'text' => ['th', 'h'],
             'box' => [$elementHeight, 'ih'],
             default => ['h', 'H'],
@@ -293,25 +314,46 @@ class OverlayRenderer
 
         $y = match (true) {
             str_starts_with($position, 'top') => (string) $margin,
-            str_starts_with($position, 'bottom') => sprintf('%s-%s-%d', $frameH, $ownH, $margin),
-            default => sprintf('(%s-%s)/2', $frameH, $ownH),
+            str_starts_with($position, 'bottom') => sprintf('%s-%s-%d', $frameHExpr, $ownH, $margin),
+            default => sprintf('(%s-%s)/2', $frameHExpr, $ownH),
         };
-
-        if ($position === 'center') {
-            $x = $kind === 'box' && $elementWidth === 'iw' ? '0' : $x;
-        }
 
         return [$x, $y];
     }
 
-    /**
-     * Build the %{localtime} expansion.
-     *
-     * FFmpeg parses this string three times (filter options, then drawtext, then the
-     * expansion), so the colons inside the strftime format need three backslashes
-     * while the one after "localtime" needs a single one. Verified with ffmpeg 6.1:
-     * fewer escapes give "requires at most 1 arguments" or "Stray %".
-     */
+    /** Width in output pixels for an element sized by the editor. */
+    private function elementWidth(array $el, int $fallback): int
+    {
+        if (self::hasPercent($el, 'w')) {
+            return max(8, (int) round($this->frameWidth * self::percent($el, 'w') / 100));
+        }
+
+        $legacy = $el['width'] ?? null;
+
+        return is_numeric($legacy) ? max(8, (int) $legacy) : $fallback;
+    }
+
+    private function elementHeight(array $el, int $fallback): int
+    {
+        if (self::hasPercent($el, 'h')) {
+            return max(2, (int) round($this->frameHeight * self::percent($el, 'h') / 100));
+        }
+
+        $legacy = $el['height'] ?? null;
+
+        return is_numeric($legacy) ? max(2, (int) $legacy) : $fallback;
+    }
+
+    private static function hasPercent(array $el, string $key): bool
+    {
+        return isset($el[$key.'_pct']) && is_numeric($el[$key.'_pct']);
+    }
+
+    private static function percent(array $el, string $key): float
+    {
+        return max(-50.0, min(150.0, (float) $el[$key.'_pct']));
+    }
+
     private function clockFormat(string $format): string
     {
         $c = '\\\\\\:';   // a colon that survives all three parsing passes

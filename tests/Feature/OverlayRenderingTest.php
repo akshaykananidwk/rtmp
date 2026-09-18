@@ -198,6 +198,81 @@ class OverlayRenderingTest extends TestCase
         File::delete($logo);
     }
 
+    /** Geometry from the visual editor is a percentage of the frame, so it must land on real pixels. */
+    public function test_editor_percentages_become_the_right_pixels(): void
+    {
+        [$tenant] = $this->adminSetup();
+        $this->actAsTenant($tenant);
+
+        $overlay = Overlay::factory()->create([
+            'tenant_id' => $tenant->id,
+            'resolution' => '1920x1080',
+            'elements' => [
+                ['type' => 'text', 'enabled' => true, 'text' => 'X', 'x_pct' => 25, 'y_pct' => 50, 'size_pct' => 5, 'color' => '#ffffff'],
+                ['type' => 'box', 'enabled' => true, 'x_pct' => 0, 'y_pct' => 80, 'w_pct' => 50, 'h_pct' => 10, 'color' => '#000000'],
+            ],
+        ]);
+
+        $filter = app(OverlayRenderer::class)->build($overlay)['filter'];
+
+        // 25% of 1920 = 480, 50% of 1080 = 540, font 5% of 1080 = 54
+        $this->assertStringContainsString('x=480:y=540', $filter);
+        $this->assertStringContainsString('fontsize=54', $filter);
+        // box: 50% width = 960, 10% height = 108, at y 80% = 864
+        $this->assertStringContainsString('drawbox=x=0:y=864:w=960:h=108', $filter);
+    }
+
+    /** The same layout must scale when the output resolution changes. */
+    public function test_layout_scales_with_the_output_resolution(): void
+    {
+        [$tenant] = $this->adminSetup();
+        $this->actAsTenant($tenant);
+
+        $elements = [['type' => 'text', 'enabled' => true, 'text' => 'X', 'x_pct' => 50, 'y_pct' => 50, 'size_pct' => 10, 'color' => '#fff']];
+        $renderer = app(OverlayRenderer::class);
+
+        $hd = Overlay::factory()->create(['tenant_id' => $tenant->id, 'resolution' => '1920x1080', 'elements' => $elements]);
+        $sd = Overlay::factory()->create(['tenant_id' => $tenant->id, 'resolution' => '1280x720', 'elements' => $elements]);
+
+        $this->assertStringContainsString('x=960:y=540', $renderer->build($hd)['filter']);
+        $this->assertStringContainsString('fontsize=108', $renderer->build($hd)['filter']);
+        $this->assertStringContainsString('x=640:y=360', $renderer->build($sd)['filter']);
+        $this->assertStringContainsString('fontsize=72', $renderer->build($sd)['filter']);
+    }
+
+    /** A dragged layout must still render, and put ink where the editor showed it. */
+    public function test_a_dragged_layout_renders_where_the_editor_shows_it(): void
+    {
+        [$tenant] = $this->adminSetup();
+        $this->actAsTenant($tenant);
+
+        $overlay = Overlay::factory()->create([
+            'tenant_id' => $tenant->id,
+            'resolution' => '640x360',
+            'elements' => [['type' => 'box', 'enabled' => true, 'x_pct' => 50, 'y_pct' => 0, 'w_pct' => 50, 'h_pct' => 50, 'color' => '#ffffff', 'opacity' => 1]],
+        ]);
+
+        $renderer = app(OverlayRenderer::class);
+        $built = $renderer->build($overlay);
+        $out = sys_get_temp_dir().'/ak-drag-'.uniqid().'.png';
+
+        $process = new Process(array_merge(
+            [$this->ffmpeg, '-hide_banner', '-loglevel', 'error', '-y', '-f', 'lavfi', '-i', 'color=c=0x808080:s=640x360:d=2:r=25'],
+            ['-filter_complex', $built['filter'], '-map', '[vout]', '-ss', '1', '-frames:v', '1', '-f', 'image2', '-vcodec', 'png', $out]
+        ));
+        $process->setTimeout(90);
+        $process->run();
+        $this->assertTrue($process->isSuccessful(), $process->getErrorOutput());
+
+        $image = imagecreatefrompng($out);
+        // top-right quadrant is white, the rest untouched grey
+        $this->assertSame(0xFFFFFF, imagecolorat($image, 500, 90) & 0xFFFFFF, 'box should cover the top-right quadrant');
+        $this->assertSame(0x808080, imagecolorat($image, 100, 90) & 0xFFFFFF, 'top-left must stay untouched');
+        $this->assertSame(0x808080, imagecolorat($image, 500, 300) & 0xFFFFFF, 'bottom-right must stay untouched');
+        imagedestroy($image);
+        File::delete($out);
+    }
+
     public function test_a_font_is_available_or_text_is_skipped_safely(): void
     {
         [$tenant] = $this->adminSetup();

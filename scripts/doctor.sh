@@ -46,6 +46,24 @@ else
   echo "mediamtx binary or /etc/mediamtx/mediamtx.yml missing"
 fi
 
+hr "ENGINE CONFIG UP TO DATE?"
+if [[ -f /etc/mediamtx/mediamtx.yml && -f scripts/mediamtx/mediamtx.yml ]]; then
+  for path in branded live; do
+    grep -q "\^$path/" /etc/mediamtx/mediamtx.yml && echo "  $path/ path: present" || echo "  $path/ path: MISSING – re-run scripts/sync-from-github.sh or install-mediamtx.sh"
+  done
+else
+  echo "  /etc/mediamtx/mediamtx.yml not found"
+fi
+
+hr "OVERLAY STATE"
+sudo -u "$WEBU" "$PHPBIN" artisan tinker --execute='
+$s = App\Models\StreamSession::withoutGlobalScopes()->whereIn("status", ["detected","live"])->latest("started_at")->first();
+echo "active session : ", $s?->id ?: "none", "\n";
+echo "overlay        : ", $s?->overlay_id ?: "none", "\n";
+echo "branding status: ", $s?->branding_status ?: "-", "\n";
+echo "overlays       : ", App\Models\Overlay::withoutGlobalScopes()->count(), "\n";
+echo "keys w/overlay : ", App\Models\StreamEndpoint::withoutGlobalScopes()->whereNotNull("overlay_id")->count(), "\n";' 2>/dev/null | tail -6
+
 hr "MEDIAMTX LOG (last 15)"
 journalctl -u mediamtx -n 15 --no-pager 2>/dev/null | mask || echo "no journal"
 

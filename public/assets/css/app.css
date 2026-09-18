@@ -57,3 +57,31 @@ footer{border-top:1px solid var(--border);padding:34px 0;color:var(--muted);font
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}.modal.open{display:flex}.modal .card{max-width:480px;width:100%}
 @media (max-width:900px){.admin{grid-template-columns:1fr}.sidebar{position:fixed;left:-260px;width:250px;z-index:40;transition:.2s}.sidebar.open{left:0}.menu-btn{display:inline-flex}.nav ul{display:none;position:absolute;top:64px;left:0;right:0;background:var(--bg2);flex-direction:column;padding:16px 20px;border-bottom:1px solid var(--border);z-index:30}.nav ul.open{display:flex}.nav-toggle{display:block}.main{padding:16px}h1{font-size:1.5rem}}
 @media print{.sidebar,.topbar,.btn{display:none!important}.admin{display:block}}
+
+/* ---------------- visual overlay editor ---------------- */
+.ov-layout{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:18px;align-items:start}
+.ov-stage{position:relative;width:100%;overflow:hidden;background:#05070d;border:1px solid var(--border);border-radius:12px}
+.ov-frame{position:relative;transform-origin:top left;background:#05070d;overflow:hidden}
+.ov-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+.ov-grid{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px);background-size:10% 10%}
+.ov-hint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#3b465e;font-size:28px;pointer-events:none}
+.ov-box{position:absolute;cursor:move;outline:2px dashed rgba(34,211,238,.45);outline-offset:2px;touch-action:none}
+.ov-box.selected{outline:2px solid var(--cyan);z-index:5}
+.ov-box.locked{cursor:not-allowed;outline-color:rgba(245,158,11,.7)}
+.ov-content{pointer-events:none}
+.ov-placeholder{display:flex;align-items:center;justify-content:center;background:rgba(34,211,238,.18);border:2px dashed var(--cyan);color:#a5f3fc;font:700 24px Inter,sans-serif}
+.ov-handle{position:absolute;width:18px;height:18px;background:var(--cyan);border:2px solid #04131d;border-radius:4px}
+.ov-box:not(.selected) .ov-handle{display:none}
+.ov-nw{left:-9px;top:-9px;cursor:nwse-resize}.ov-ne{right:-9px;top:-9px;cursor:nesw-resize}
+.ov-sw{left:-9px;bottom:-9px;cursor:nesw-resize}.ov-se{right:-9px;bottom:-9px;cursor:nwse-resize}
+.ov-list{max-height:70vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.ov-item{border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--bg2);cursor:pointer}
+.ov-item.active{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(34,211,238,.18)}
+.ov-item-head{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:.85rem;margin-bottom:8px}
+.ov-item .field{margin-bottom:8px}.ov-type{margin-bottom:8px}
+.ov-props{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:6px}
+.ov-props label{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:0}
+.ov-props input{padding:5px 6px;font-size:.82rem}
+.ov-props input[type=color]{padding:2px;height:30px}
+.ov-quick{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+@media (max-width:1100px){.ov-layout{grid-template-columns:1fr}.ov-list{max-height:none}}
