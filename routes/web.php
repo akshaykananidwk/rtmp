@@ -22,6 +22,8 @@ Route::middleware('installed')->group(function (): void {
         Route::get('/login', [Auth\LoginController::class, 'show'])->name('login');
         Route::post('/login', [Auth\LoginController::class, 'login'])->middleware('throttle:login');
         Route::get('/admin/login', fn () => redirect()->route('login'))->name('admin.login');
+        Route::get('/invitations/{token}', [Auth\InvitationAcceptController::class, 'show'])->name('invitations.accept');
+        Route::post('/invitations/{token}', [Auth\InvitationAcceptController::class, 'store'])->middleware('throttle:register')->name('invitations.accept.store');
         Route::get('/register', [Auth\RegisterController::class, 'show'])->name('register');
         Route::post('/register', [Auth\RegisterController::class, 'store'])->middleware('throttle:register')->name('register.store');
         Route::get('/forgot-password', [Auth\PasswordResetController::class, 'request'])->name('password.request');
@@ -128,6 +130,9 @@ Route::middleware('installed')->group(function (): void {
         Route::get('/logs/audit', [Admin\LogController::class, 'audit'])->name('logs.audit');
         Route::get('/logs/errors', [Admin\LogController::class, 'errors'])->name('logs.errors');
         Route::get('/logs/errors/{error}', [Admin\LogController::class, 'error'])->name('logs.error');
+        Route::post('/invitations', [Admin\InvitationController::class, 'store'])->name('invitations.store');
+        Route::delete('/invitations/{invitation}', [Admin\InvitationController::class, 'destroy'])->name('invitations.destroy');
+
         Route::get('/settings', [Admin\SettingsController::class, 'index'])->name('settings');
         Route::post('/settings/{group}', [Admin\SettingsController::class, 'update'])->name('settings.update');
         Route::get('/cron-setup', [Admin\SettingsController::class, 'cron'])->name('cron');

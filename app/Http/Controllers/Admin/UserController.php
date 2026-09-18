@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Domain\Accounts\InvitationService;
 use App\Domain\Audit\AuditLogger;
 use App\Http\Controllers\Controller;
 use App\Models\Role;
+use App\Models\TeamInvitation;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,7 +24,11 @@ class UserController extends Controller
     {
         $this->authorize('viewAny', User::class);
 
-        return view('admin.users.index', ['users' => User::forTenant(auth()->user()->tenant_id)->with('roles')->orderBy('name')->paginate(20)]);
+        return view('admin.users.index', [
+            'users' => User::forTenant(auth()->user()->tenant_id)->with('roles')->orderBy('name')->paginate(20),
+            'invitations' => TeamInvitation::with('inviter')->latest()->limit(20)->get(),
+            'invitableRoles' => app(InvitationService::class)->assignableRoles(auth()->user()),
+        ]);
     }
 
     public function create(): View
