@@ -50,8 +50,46 @@
   <div class="field"><label class="check"><input type="checkbox" name="maintenance_mode" value="1" {{ ($v['maintenance_mode'] ?? '0') === '1' ? 'checked' : '' }} {{ $dis }}> Maintenance mode (visitors see the maintenance page; your session keeps access)</label></div>
 @break
 @case('platforms')
+  <details class="card" style="margin:0 0 18px;padding:12px 14px" open>
+    <summary style="cursor:pointer;font-weight:600">📺 YouTube — what to do in Google Cloud, step by step</summary>
+    <ol class="small" style="margin:10px 0 0 18px;padding:0;line-height:1.8">
+      <li>Open <a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener">console.cloud.google.com</a> and create a project (any name).</li>
+      <li>Go to <strong>APIs &amp; Services → Library</strong>, search <strong>YouTube Data API v3</strong> and press Enable.</li>
+      <li>Go to <strong>OAuth consent screen</strong>. Choose <em>External</em>, fill in the app name and your e-mail, and add yourself under <strong>Test users</strong>. Leave it in Testing — that is enough for your own channels.</li>
+      <li>Go to <strong>Credentials → Create credentials → OAuth client ID</strong>, type <strong>Web application</strong>.</li>
+      <li>Under <strong>Authorised redirect URIs</strong> paste exactly:<br><span class="mono">{{ route('admin.platforms.callback', 'youtube') }}</span></li>
+      <li>Copy the <strong>Client ID</strong> and <strong>Client secret</strong> into the two boxes below and Save.</li>
+      <li>Then <strong>Destinations → Add destination → YouTube → Connect YouTube</strong>.</li>
+    </ol>
+    <div class="help" style="margin-top:8px">Live streaming must already be enabled on the channel — YouTube makes you wait 24 hours after phone verification before the first one.</div>
+  </details>
+
   <h3>YouTube (Google Cloud OAuth client)</h3><div class="form-row"><div class="field"><label>Client ID</label><input type="text" name="youtube_client_id" value="{{ $v['youtube_client_id'] ?? '' }}" {{ $dis }}></div><div class="field"><label>Client secret {{ ! empty($v['youtube_client_secret']) ? '(saved)' : '' }}</label><input type="password" name="youtube_client_secret" value="" autocomplete="off" {{ $dis }}></div></div><div class="help" style="margin-bottom:16px">Redirect URI: <span class="mono">{{ route('admin.platforms.callback', 'youtube') }}</span> · enable "YouTube Data API v3".</div>
+  <details class="card" style="margin:18px 0;padding:12px 14px" open>
+    <summary style="cursor:pointer;font-weight:600">📘 Facebook — step by step, and the one part nobody can shortcut</summary>
+    <ol class="small" style="margin:10px 0 0 18px;padding:0;line-height:1.8">
+      <li>Open <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener">developers.facebook.com/apps</a> → <strong>Create app</strong> → type <strong>Business</strong>.</li>
+      <li>Add the <strong>Facebook Login</strong> product.</li>
+      <li>In <strong>Facebook Login → Settings</strong>, under <strong>Valid OAuth Redirect URIs</strong> paste exactly:<br><span class="mono">{{ route('admin.platforms.callback', 'facebook') }}</span></li>
+      <li>From <strong>Settings → Basic</strong> copy the <strong>App ID</strong> and <strong>App secret</strong> into the boxes below and Save.</li>
+      <li>Add yourself under <strong>App roles</strong> as an administrator or tester. While the app is in <em>Development</em> mode this is enough to go live on <strong>your own</strong> Pages.</li>
+      <li>Then <strong>Destinations → Add destination → Facebook → Connect Facebook</strong>.</li>
+    </ol>
+    <div class="alert alert-warning small" style="margin-top:10px">
+      <strong>To let other people's accounts stream through this server</strong>, Meta requires App Review for <span class="mono">pages_show_list</span>, <span class="mono">pages_manage_posts</span> and <span class="mono">publish_video</span>. That is a submission Meta staff assess, usually over several days, and nobody can do it for you or skip it. Until then the app works for your own Pages only.
+    </div>
+  </details>
+
   <h3>Meta / Facebook (App)</h3><div class="form-row"><div class="field"><label>App ID</label><input type="text" name="meta_app_id" value="{{ $v['meta_app_id'] ?? '' }}" {{ $dis }}></div><div class="field"><label>App secret {{ ! empty($v['meta_app_secret']) ? '(saved)' : '' }}</label><input type="password" name="meta_app_secret" value="" autocomplete="off" {{ $dis }}></div><div class="field"><label>Webhook verify token</label><input type="text" name="meta_webhook_verify_token" value="{{ $v['meta_webhook_verify_token'] ?? '' }}" {{ $dis }}></div></div><div class="help" style="margin-bottom:16px">Redirect URI: <span class="mono">{{ route('admin.platforms.callback', 'facebook') }}</span> · Webhook: <span class="mono">{{ route('webhooks.meta') }}</span> · Permissions: pages_show_list, pages_manage_posts, publish_video (App Review).</div>
+  <details class="card" style="margin:18px 0;padding:12px 14px">
+    <summary style="cursor:pointer;font-weight:600">🎮 Twitch — step by step</summary>
+    <ol class="small" style="margin:10px 0 0 18px;padding:0;line-height:1.8">
+      <li>Open <a href="https://dev.twitch.tv/console/apps/create" target="_blank" rel="noopener">dev.twitch.tv/console/apps</a> and register an application.</li>
+      <li>Under <strong>OAuth Redirect URLs</strong> paste exactly:<br><span class="mono">{{ route('admin.platforms.callback', 'twitch') }}</span></li>
+      <li>Category <em>Broadcasting Suite</em>, then copy the Client ID and a new Client Secret into the boxes below.</li>
+    </ol>
+  </details>
+
   <h3>Twitch</h3><div class="form-row"><div class="field"><label>Client ID</label><input type="text" name="twitch_client_id" value="{{ $v['twitch_client_id'] ?? '' }}" {{ $dis }}></div><div class="field"><label>Client secret {{ ! empty($v['twitch_client_secret']) ? '(saved)' : '' }}</label><input type="password" name="twitch_client_secret" value="" autocomplete="off" {{ $dis }}></div></div><div class="help">Redirect URI: <span class="mono">{{ route('admin.platforms.callback', 'twitch') }}</span></div>
 @break
 @case('notifications')
