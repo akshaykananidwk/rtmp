@@ -288,4 +288,100 @@ class OverlayRenderingTest extends TestCase
 
         $this->assertFileExists($renderer->font());
     }
+
+    public function test_a_colour_written_with_an_alpha_stays_that_colour(): void
+    {
+        [$tenant] = $this->adminSetup();
+        $this->actAsTenant($tenant);
+
+        // "black@0.6" is FFmpeg's own spelling and is what anyone editing a layout writes.
+        // It used to fail the colour pattern and fall back to solid WHITE, turning a dark
+        // backdrop bar into a white block that hid the light text sitting on it.
+        $overlay = Overlay::factory()->create([
+            'tenant_id' => $tenant->id,
+            'resolution' => '1280x720',
+            'elements' => [
+                ['type' => 'box', 'enabled' => true, 'x_pct' => 0, 'y_pct' => 80, 'w_pct' => 100, 'h_pct' => 20, 'color' => 'black@0.6'],
+            ],
+        ]);
+
+        $built = app(OverlayRenderer::class)->build($overlay);
+        $this->assertNotNull($built);
+        $this->assertStringContainsString('color=black@0.60', $built['filter']);
+        $this->assertStringNotContainsString('color=white', $built['filter']);
+
+        $frame = $this->renderOnGrey($built['filter']);
+
+        // The bar must be darker than the mid-grey behind it, never lighter.
+        $bar = $this->averageBrightness($frame, 600, 700);
+        $above = $this->averageBrightness($frame, 100, 200);
+        $this->assertLessThan($above - 20, $bar, 'a 60% black bar rendered lighter than the picture behind it');
+        File::delete($frame);
+    }
+
+    public function test_white_text_on_a_dark_bar_is_actually_readable(): void
+    {
+        [$tenant] = $this->adminSetup();
+        $this->actAsTenant($tenant);
+
+        $overlay = Overlay::factory()->create([
+            'tenant_id' => $tenant->id,
+            'resolution' => '1280x720',
+            'elements' => [
+                ['type' => 'box', 'enabled' => true, 'x_pct' => 0, 'y_pct' => 80, 'w_pct' => 100, 'h_pct' => 20, 'color' => 'black@0.6'],
+                ['type' => 'text', 'enabled' => true, 'text' => 'AK COMPUTER', 'x_pct' => 3, 'y_pct' => 84, 'size_pct' => 7, 'color' => '#ffffff'],
+            ],
+        ]);
+
+        $frame = $this->renderOnGrey(app(OverlayRenderer::class)->build($overlay)['filter']);
+
+        // Both very dark (the bar) and very light (the letters) pixels must exist.
+        $image = imagecreatefrompng($frame);
+        $dark = $light = 0;
+        for ($y = 600; $y < 700; $y += 2) {
+            for ($x = 0; $x < 700; $x += 2) {
+                $rgb = imagecolorat($image, $x, $y);
+                $brightness = ((($rgb >> 16) & 0xFF) + (($rgb >> 8) & 0xFF) + ($rgb & 0xFF)) / 3;
+                $brightness < 80 ? $dark++ : ($brightness > 200 ? $light++ : null);
+            }
+        }
+        imagedestroy($image);
+
+        $this->assertGreaterThan(500, $dark, 'the bar is not dark');
+        $this->assertGreaterThan(100, $light, 'the text is not visible against the bar');
+        File::delete($frame);
+    }
+
+    private function renderOnGrey(string $filter): string
+    {
+        $out = sys_get_temp_dir().'/ak-colour-'.uniqid().'.png';
+        $process = new Process([
+            $this->ffmpeg, '-hide_banner', '-loglevel', 'error', '-y',
+            '-f', 'lavfi', '-i', 'color=c=0x808080:s=1280x720:d=4:r=30',
+            '-filter_complex', $filter, '-map', '[vout]', '-ss', '2', '-frames:v', '1',
+            '-f', 'image2', '-vcodec', 'png', $out,
+        ]);
+        $process->setTimeout(90);
+        $process->run();
+        $this->assertTrue($process->isSuccessful(), 'render failed: '.$process->getErrorOutput());
+
+        return $out;
+    }
+
+    private function averageBrightness(string $file, int $y0, int $y1): float
+    {
+        $image = imagecreatefrompng($file);
+        $total = 0;
+        $count = 0;
+        for ($y = $y0; $y < min($y1, imagesy($image)); $y += 2) {
+            for ($x = 0; $x < imagesx($image); $x += 8) {
+                $rgb = imagecolorat($image, $x, $y);
+                $total += ((($rgb >> 16) & 0xFF) + (($rgb >> 8) & 0xFF) + ($rgb & 0xFF)) / 3;
+                $count++;
+            }
+        }
+        imagedestroy($image);
+
+        return $count ? $total / $count : 0.0;
+    }
 }

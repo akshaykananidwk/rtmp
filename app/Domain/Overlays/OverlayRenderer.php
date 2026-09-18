@@ -161,10 +161,13 @@ class OverlayRenderer
                 $boxWidth = self::hasPercent($el, 'w') ? (string) $this->elementWidth($el, 200) : (string) ($el['width'] ?? 'iw');
                 $boxHeight = $this->elementHeight($el, 90);
                 [$bx, $by] = $this->position($el, 'box', $boxWidth, (string) $boxHeight);
+                // A backdrop bar defaults to black: an unreadable colour must not turn it
+                // white, which is exactly what hides the light text these bars sit behind.
+                [$boxColor, $boxAlpha] = $this->parseColor((string) ($el['color'] ?? 'black'), 'black');
                 $chain[] = sprintf(
                     'drawbox=x=%s:y=%s:w=%s:h=%d:color=%s@%.2f:t=fill',
                     $bx, $by, $boxWidth, $boxHeight,
-                    $this->color($el['color'] ?? 'black'), $this->opacity($el)
+                    $boxColor, $this->opacity($el, $boxAlpha)
                 );
 
                 continue;
@@ -176,11 +179,16 @@ class OverlayRenderer
                 continue; // no usable font: skip text rather than crash the encoder
             }
 
+            [$textColor, $textAlpha] = $this->parseColor((string) ($el['color'] ?? 'white'));
+            [$boxColor, $boxAlpha] = $this->parseColor((string) ($el['background'] ?? 'black'), 'black');
+
             $common = sprintf(
                 'fontfile=%s:fontsize=%d:fontcolor=%s@%.2f%s',
                 $this->escapePath($font), $size,
-                $this->color($el['color'] ?? 'white'), $this->opacity($el),
-                ! empty($el['background']) ? sprintf(':box=1:boxcolor=%s@%.2f:boxborderw=%d', $this->color($el['background']), (float) ($el['background_opacity'] ?? 0.55), max(4, (int) ($size / 4))) : ''
+                $textColor, $this->opacity($el, $textAlpha),
+                ! empty($el['background'])
+                    ? sprintf(':box=1:boxcolor=%s@%.2f:boxborderw=%d', $boxColor, $boxAlpha ?? (float) ($el['background_opacity'] ?? 0.55), max(4, (int) ($size / 4)))
+                    : ''
             );
 
             if ($type === 'clock') {
@@ -370,18 +378,50 @@ class OverlayRenderer
         return '%{localtime\\:'.($map[$format] ?? $map['H:i:s']).'}';
     }
 
-    private function color(string $value): string
+    /**
+     * Split a colour into the part FFmpeg understands and an alpha written as "name@0.6".
+     *
+     * That suffix is FFmpeg's own spelling, so it is what anyone hand-editing a layout
+     * writes. It used to fail the pattern below and fall back to white at full opacity,
+     * turning a dark backdrop bar into a solid white block that hid the text on it.
+     *
+     * @return array{0:string, 1:float|null}
+     */
+    private function parseColor(string $value, string $fallback = 'white'): array
     {
         $value = trim($value);
+        $alpha = null;
 
-        return preg_match('/^#?[0-9A-Fa-f]{6}$/', $value)
-            ? '0x'.ltrim($value, '#')
-            : (preg_match('/^[a-zA-Z]+$/', $value) ? strtolower($value) : 'white');
+        if (str_contains($value, '@')) {
+            [$value, $suffix] = explode('@', $value, 2);
+            $value = trim($value);
+            if (is_numeric($suffix)) {
+                $alpha = max(0.0, min(1.0, (float) $suffix));
+            }
+        }
+
+        $colour = match (true) {
+            (bool) preg_match('/^#?[0-9A-Fa-f]{6}$/', $value) => '0x'.ltrim($value, '#'),
+            (bool) preg_match('/^[a-zA-Z]+$/', $value) => strtolower($value),
+            default => $fallback,
+        };
+
+        return [$colour, $alpha];
     }
 
-    private function opacity(array $el): float
+    private function color(string $value, string $fallback = 'white'): string
     {
-        return max(0.0, min(1.0, (float) ($el['opacity'] ?? 1)));
+        return $this->parseColor($value, $fallback)[0];
+    }
+
+    /** An explicit opacity on the element wins; otherwise any alpha written into the colour. */
+    private function opacity(array $el, ?float $fromColor = null): float
+    {
+        if (array_key_exists('opacity', $el) && is_numeric($el['opacity'])) {
+            return max(0.0, min(1.0, (float) $el['opacity']));
+        }
+
+        return $fromColor ?? 1.0;
     }
 
     private function imagePath(?string $stored): ?string
