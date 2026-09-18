@@ -44,7 +44,7 @@ BACKUP="../ak-backup-$(date +%Y%m%d-%H%M%S).tar.gz"
 tar -czf "$BACKUP" --exclude=vendor --exclude=storage --exclude=node_modules . 2>/dev/null || echo "    (backup skipped)"
 
 # Protected paths are never overwritten
-EXCLUDES=(--exclude=.env --exclude=.env.* --exclude=storage --exclude=vendor --exclude=public/uploads --exclude=node_modules --exclude=.git)
+EXCLUDES=(--exclude=.env --exclude=.env.* --exclude=storage --exclude=vendor --exclude=public/uploads --exclude=node_modules --exclude=.git --exclude=.user.ini)
 
 echo "==> Copying updated files"
 if command -v rsync >/dev/null; then
@@ -76,7 +76,7 @@ if [[ "$OWNER" == "root" ]]; then
   echo "!!  If the site returns 500, run:  chown -R <web-user>:<web-user> \"$APP_DIR\""
 else
   echo "==> Restoring ownership to $OWNER and permissions"
-  chown -R "$OWNER":"$OWNER" . 2>/dev/null || true
+  find . -not -name '.user.ini' -print0 2>/dev/null | xargs -0 -r chown -h "$OWNER":"$OWNER" 2>/dev/null || true
 fi
 chmod -R 775 storage bootstrap/cache 2>/dev/null || true
 chmod +x scripts/*.sh 2>/dev/null || true

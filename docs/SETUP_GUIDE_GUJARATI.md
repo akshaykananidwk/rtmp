@@ -84,11 +84,13 @@ Panel માં: **Health** → **Run health check**. હવે આવું દ
 | RTMP | 🟢 Port 1935 open |
 | Queue | 🟢 Driver: database |
 
-હજી લાલ હોય તો:
+હજી લાલ હોય તો **એક જ command** ચલાવો — એ બધું તપાસીને report આપશે:
+
 ```bash
-systemctl status mediamtx --no-pager
-journalctl -u mediamtx -n 30 --no-pager
+sudo bash scripts/doctor.sh /www/wwwroot/rtmp.akdwk.in
 ```
+
+એનું output સલામત છે (keys/passwords છુપાયેલા હોય છે), એટલે એ મોકલી શકાય.
 
 ---
 

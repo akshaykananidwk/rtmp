@@ -146,3 +146,33 @@ It is a **PHP setting in the hosting panel**, not a shell command — pasting it
 gives "No such file or directory". In aaPanel: **Website → your domain → Config → PHP settings**
 (or *Configuration file*), find `open_basedir` and append `:/usr/bin/:/usr/local/bin/:/tmp/`, then
 restart PHP. Commenting the line out with `;` also works.
+
+## Streaming Engine: "MediaMTX API not reachable" / RTMP port closed
+
+MediaMTX exits immediately when its configuration contains an unknown key, so systemd reports the
+unit as started and it is gone a second later. Check it directly:
+
+```bash
+sudo mediamtx /etc/mediamtx/mediamtx.yml     # prints the exact error and exits
+sudo journalctl -u mediamtx -n 30 --no-pager
+sudo ss -lntp | grep -E '1935|9997'
+```
+
+`ERR: json: unknown field "x"` means that key does not exist in your MediaMTX version — remove it.
+(RTMPS is configured with `rtmpEncryption: "no"|"strict"|"optional"`, there is no `rtmps` key.)
+`scripts/install-mediamtx.sh` now validates the rendered configuration before enabling the service.
+
+For a single command that reports services, ports, engine API, configuration, logs, permissions,
+cron and the Laravel health check in one go:
+
+```bash
+sudo bash scripts/doctor.sh /path/to/app
+```
+
+Its output masks stream keys, tokens and passwords, so it is safe to share.
+
+## Queue: "Jobs are waiting > 10 min – is the worker running?"
+
+Start the worker: `sudo systemctl enable --now akstream-queue`, or on shared hosting add the cron
+line from *Admin → Cron Setup*. Without it, platform API calls (creating YouTube broadcasts and
+Facebook live videos), notifications and updates never run.

@@ -66,6 +66,14 @@ TPL="$APP_DIR/scripts/mediamtx/mediamtx.yml"
 sed -e "s#__APP_URL__#$APP_URL#g" -e "s#__ENGINE_SECRET__#$SECRET#g" "$TPL" > /etc/mediamtx/mediamtx.yml
 chmod 640 /etc/mediamtx/mediamtx.yml; chown mediamtx:mediamtx /etc/mediamtx/mediamtx.yml
 
+# Reject a bad configuration here rather than letting the service crash-loop later
+VALIDATION="$(timeout 5 /usr/local/bin/mediamtx /etc/mediamtx/mediamtx.yml 2>&1 | head -5 || true)"
+if grep -qiE '^ERR|unknown field|cannot|invalid' <<<"$VALIDATION"; then
+  echo "ERROR: MediaMTX rejected the configuration:"; echo "$VALIDATION" | sed 's/^/    /'
+  echo "Fix scripts/mediamtx/mediamtx.yml and re-run."; exit 1
+fi
+echo "    configuration validated"
+
 echo "==> 5/6 Services"
 # shellcheck source=/dev/null
 [[ -f "$APP_DIR/scripts/lib-detect.sh" ]] && source "$APP_DIR/scripts/lib-detect.sh"
@@ -81,8 +89,12 @@ for unit in mediamtx akstream-supervisor akstream-queue; do
 done
 systemctl daemon-reload
 systemctl enable --now mediamtx
-sleep 2
+sleep 3
+if ! curl -s -m 5 -o /dev/null http://127.0.0.1:9997/v3/paths/list; then
+  echo "!!  MediaMTX API is not answering yet — see the status printed below."
+fi
 systemctl enable --now akstream-supervisor akstream-queue
+sleep 2
 
 echo "==> 6/6 Firewall + scheduler"
 if command -v ufw >/dev/null && ufw status | grep -q active; then ufw allow 1935/tcp >/dev/null; ufw allow 8890/udp >/dev/null
