@@ -16,6 +16,18 @@
 ###############################################################################
 set -euo pipefail
 
+# Bash reads a script while it runs, and this one overwrites itself when it copies
+# the new files in — which silently truncates the rest of the run. Re-exec from a
+# private copy first so the update can never corrupt the updater.
+if [[ "${AK_SYNC_RELOCATED:-0}" != "1" ]]; then
+    SELF_COPY="$(mktemp -t ak-sync-XXXXXX.sh)"
+    cat "${BASH_SOURCE[0]}" > "$SELF_COPY"
+    export AK_SYNC_RELOCATED=1
+    trap 'rm -f "$SELF_COPY"' EXIT
+    bash "$SELF_COPY" "$@"
+    exit $?
+fi
+
 APP_DIR="${1:-$PWD}"
 REPO="${2:-akshaykananidwk/rtmp}"
 BRANCH="${3:-claude/ak-computer-streaming-saas-868j8s}"
@@ -82,11 +94,36 @@ chmod -R 775 storage bootstrap/cache 2>/dev/null || true
 chmod +x scripts/*.sh 2>/dev/null || true
 
 PHPBIN="$(detect_php 2>/dev/null || true)"
+run_artisan() {
+  if [[ -z "$PHPBIN" ]]; then return 1; fi
+  if [[ "$OWNER" != "root" ]]; then sudo -u "$OWNER" "$PHPBIN" artisan "$@"; else "$PHPBIN" artisan "$@"; fi
+}
+
 if [[ -n "$PHPBIN" ]]; then
-  if [[ "$OWNER" != "root" ]]; then sudo -u "$OWNER" "$PHPBIN" artisan optimize:clear >/dev/null 2>&1 || true
-  else "$PHPBIN" artisan optimize:clear >/dev/null 2>&1 || true; fi
+  run_artisan optimize:clear >/dev/null 2>&1 || true
+
+  # New code almost always ships new tables/columns; without this the panel throws
+  # "table not found" errors. A database backup is taken first.
+  if [[ -f storage/app/installed.lock ]]; then
+    echo "==> Backing up the database"
+    run_artisan backup:run --type=database --trigger=manual >/dev/null 2>&1 \
+      && echo "    database backup created" \
+      || echo "    !! database backup failed – continuing, files backup is at $BACKUP"
+
+    echo "==> Running database migrations"
+    if MIGRATE_OUTPUT="$(run_artisan migrate --force 2>&1)"; then
+      echo "$MIGRATE_OUTPUT" | grep -E 'DONE|Nothing to migrate|INFO' | sed 's/^/    /' | tail -12
+    else
+      echo "!!  MIGRATIONS FAILED:"
+      echo "$MIGRATE_OUTPUT" | tail -15 | sed 's/^/    /'
+      echo "!!  The panel may show errors until this is fixed."
+    fi
+  else
+    echo "==> Skipping migrations (application not installed yet – finish /install first)"
+  fi
 else
-  echo "!!  PHP binary not found – run 'php artisan optimize:clear' manually."
+  echo "!!  PHP binary not found – run these manually:"
+  echo "      php artisan migrate --force && php artisan optimize:clear"
 fi
 
 echo

@@ -59,10 +59,13 @@ return Application::configure(basePath: dirname(__DIR__))
                     return response()->json(['message' => 'Something went wrong.', 'reference' => $ref], 500);
                 }
 
-                // Before installation there is no admin panel to look the reference up in, so show
-                // the (secret-masked) reason directly — it is the only way to fix the server.
+                // Show the (secret-masked) reason to people who can already read it in
+                // Admin → Logs → Errors, and before installation when no panel exists yet.
                 $detail = null;
-                if (! file_exists(storage_path('app/installed.lock'))) {
+                $user = $request->user();
+                $privileged = $user !== null && method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
+
+                if ($privileged || ! file_exists(storage_path('app/installed.lock'))) {
                     $detail = [
                         'exception' => class_basename($e),
                         'message' => SecretMasker::maskString($e->getMessage()),
