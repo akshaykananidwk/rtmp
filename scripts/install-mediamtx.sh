@@ -67,8 +67,12 @@ sed -e "s#__APP_URL__#$APP_URL#g" -e "s#__ENGINE_SECRET__#$SECRET#g" "$TPL" > /e
 chmod 640 /etc/mediamtx/mediamtx.yml; chown mediamtx:mediamtx /etc/mediamtx/mediamtx.yml
 
 echo "==> 5/6 Services"
-PHP_BIN="$(command -v php)"
-WEB_USER="$(stat -c '%U' "$APP_DIR")"
+# shellcheck source=/dev/null
+[[ -f "$APP_DIR/scripts/lib-detect.sh" ]] && source "$APP_DIR/scripts/lib-detect.sh"
+PHP_BIN="$(detect_php || true)"
+[[ -n "$PHP_BIN" ]] || { echo "ERROR: PHP binary not found. Re-run with PHP_BIN=/path/to/php"; exit 1; }
+WEB_USER="$(detect_web_user)"
+echo "    php: $PHP_BIN   user: $WEB_USER"
 for unit in mediamtx akstream-supervisor akstream-queue; do
   src="$APP_DIR/scripts/systemd/$unit.service"
   [[ -f "$src" ]] || continue
@@ -86,7 +90,14 @@ elif command -v firewall-cmd >/dev/null && firewall-cmd --state >/dev/null 2>&1;
 CRON="* * * * * cd $APP_DIR && $PHP_BIN artisan schedule:run >> /dev/null 2>&1"
 ( crontab -u "$WEB_USER" -l 2>/dev/null | grep -v 'artisan schedule:run' ; echo "$CRON" ) | crontab -u "$WEB_USER" -
 
-cd "$APP_DIR" && sudo -u "$WEB_USER" "$PHP_BIN" artisan optimize:clear >/dev/null 2>&1 || true
+cd "$APP_DIR"
+if [[ "$WEB_USER" != "root" ]]; then
+  chown -R "$WEB_USER":"$WEB_USER" "$APP_DIR" 2>/dev/null || true
+  sudo -u "$WEB_USER" "$PHP_BIN" artisan optimize:clear >/dev/null 2>&1 || true
+else
+  "$PHP_BIN" artisan optimize:clear >/dev/null 2>&1 || true
+fi
+chmod -R 775 "$APP_DIR/storage" "$APP_DIR/bootstrap/cache" 2>/dev/null || true
 
 echo
 echo "=============================================================="
@@ -94,9 +105,14 @@ echo " Streaming engine ready"
 echo "   OBS Server : rtmp://$HOST/live"
 echo "   Stream key : Admin → Stream Keys → Generate"
 echo
-systemctl is-active --quiet mediamtx && echo "   mediamtx            : running" || echo "   mediamtx            : NOT running (journalctl -u mediamtx -n 30)"
-systemctl is-active --quiet akstream-supervisor && echo "   akstream-supervisor : running" || echo "   akstream-supervisor : NOT running (journalctl -u akstream-supervisor -n 30)"
-systemctl is-active --quiet akstream-queue && echo "   akstream-queue      : running" || echo "   akstream-queue      : NOT running (journalctl -u akstream-queue -n 30)"
+for unit in mediamtx akstream-supervisor akstream-queue; do
+  if systemctl is-active --quiet "$unit"; then
+    printf "   %-20s: running\n" "$unit"
+  else
+    printf "   %-20s: NOT running\n" "$unit"
+    systemctl status "$unit" --no-pager -n 6 2>/dev/null | sed 's/^/        /' | tail -7
+  fi
+done
 echo
 echo " Open the panel and run: Admin → Health → Run health check"
 echo " If PHP cannot see ffmpeg, add /usr/bin/:/usr/local/bin/ to open_basedir"

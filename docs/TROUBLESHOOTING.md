@@ -111,3 +111,38 @@ The application booted but a request failed. **Before installation** the page al
 exception class and the (secret-masked) message, plus a link to `diagnose.php` — fix what it names
 and reload. **After installation** only the reference is shown; look it up in
 *Admin → Logs → Errors* (or `storage/logs/laravel-*.log`).
+
+## Site returns 500 right after running a script or uploading files as root
+
+The files became owned by `root`, so PHP-FPM (running as `www`, `www-data`, `nginx`…) can no longer
+write to `storage/` and `bootstrap/cache/`. Repair it with:
+
+```bash
+sudo bash scripts/fix-permissions.sh /path/to/app
+```
+
+It detects the web-server user from the running PHP-FPM/nginx/Apache processes, restores ownership
+and permissions, clears the compiled caches and restarts the services. Force a user with
+`WEB_USER=www sudo -E bash scripts/fix-permissions.sh`.
+
+## systemd services say "NOT running" after install-mediamtx.sh
+
+Usually the PHP binary is not on `PATH` (aaPanel keeps it at `/www/server/php/83/bin/php`) or the
+unit runs as the wrong user. The installer now detects both; re-run it, or inspect:
+
+```bash
+systemctl status akstream-supervisor --no-pager -n 20
+journalctl -u akstream-supervisor -n 40 --no-pager
+```
+
+Override detection when needed:
+```bash
+PHP_BIN=/www/server/php/83/bin/php WEB_USER=www sudo -E bash scripts/install-mediamtx.sh /path/to/app https://your-domain
+```
+
+## open_basedir: where does that line go?
+
+It is a **PHP setting in the hosting panel**, not a shell command — pasting it into the terminal
+gives "No such file or directory". In aaPanel: **Website → your domain → Config → PHP settings**
+(or *Configuration file*), find `open_basedir` and append `:/usr/bin/:/usr/local/bin/:/tmp/`, then
+restart PHP. Commenting the line out with `;` also works.

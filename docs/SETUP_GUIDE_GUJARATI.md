@@ -48,7 +48,19 @@ akstream-supervisor : running
 akstream-queue      : running
 ```
 
+### Step 1.2b — સર્વર 500 આપે તો (ownership)
+
+Script root તરીકે ચાલ્યું હોય તો files ની માલિકી બદલાઈ શકે છે અને site 500 આપે.
+એક command થી સરખું થઈ જશે:
+
+```bash
+sudo bash scripts/fix-permissions.sh /www/wwwroot/rtmp.akdwk.in
+```
+
 ### Step 1.3 — aaPanel નું open_basedir ખોલો
+
+> ⚠️ **આ terminal નો command નથી** — આ aaPanel ના PHP settings માં લખવાનું છે.
+> Terminal માં paste કરશો તો "No such file or directory" આવશે.
 
 aaPanel PHP ને ફક્ત website folder સુધી જ જોવા દે છે, એટલે એ `ffmpeg` ને શોધી નથી શકતું.
 

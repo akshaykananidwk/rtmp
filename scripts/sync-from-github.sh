@@ -6,6 +6,9 @@
 #
 #   sudo bash sync-from-github.sh [app-directory] [owner/repo] [branch]
 #
+# The web-server user and PHP binary are detected automatically; override with
+#   WEB_USER=www PHP_BIN=/www/server/php/83/bin/php sudo -E bash sync-from-github.sh ...
+#
 # Defaults: current directory, akshaykananidwk/rtmp, claude/ak-computer-streaming-saas-868j8s
 #
 # Never touches: .env  storage/  vendor/  public/uploads/  installed.lock
@@ -65,14 +68,26 @@ if command -v composer >/dev/null && [[ "$(md5sum composer.lock 2>/dev/null | cu
   COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-interaction || echo "    composer failed – run it manually"
 fi
 
-OWNER="$(stat -c '%U' artisan)"
-echo "==> Restoring ownership to $OWNER and permissions"
-chown -R "$OWNER":"$OWNER" . 2>/dev/null || true
+# shellcheck source=/dev/null
+[[ -f scripts/lib-detect.sh ]] && source scripts/lib-detect.sh
+OWNER="$(detect_web_user 2>/dev/null || echo www-data)"
+if [[ "$OWNER" == "root" ]]; then
+  echo "!!  Could not detect the web-server user; leaving ownership unchanged."
+  echo "!!  If the site returns 500, run:  chown -R <web-user>:<web-user> \"$APP_DIR\""
+else
+  echo "==> Restoring ownership to $OWNER and permissions"
+  chown -R "$OWNER":"$OWNER" . 2>/dev/null || true
+fi
 chmod -R 775 storage bootstrap/cache 2>/dev/null || true
 chmod +x scripts/*.sh 2>/dev/null || true
 
-PHP_BIN="$(command -v php || echo php)"
-sudo -u "$OWNER" "$PHP_BIN" artisan optimize:clear >/dev/null 2>&1 || "$PHP_BIN" artisan optimize:clear >/dev/null 2>&1 || true
+PHPBIN="$(detect_php 2>/dev/null || true)"
+if [[ -n "$PHPBIN" ]]; then
+  if [[ "$OWNER" != "root" ]]; then sudo -u "$OWNER" "$PHPBIN" artisan optimize:clear >/dev/null 2>&1 || true
+  else "$PHPBIN" artisan optimize:clear >/dev/null 2>&1 || true; fi
+else
+  echo "!!  PHP binary not found – run 'php artisan optimize:clear' manually."
+fi
 
 echo
 echo "=============================================================="
