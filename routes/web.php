@@ -130,6 +130,10 @@ Route::middleware('installed')->group(function (): void {
         Route::get('/logs/audit', [Admin\LogController::class, 'audit'])->name('logs.audit');
         Route::get('/logs/errors', [Admin\LogController::class, 'errors'])->name('logs.errors');
         Route::get('/logs/errors/{error}', [Admin\LogController::class, 'error'])->name('logs.error');
+        Route::get('/export/history.csv', [Admin\ExportController::class, 'history'])->name('export.history');
+        Route::get('/export/audit.csv', [Admin\ExportController::class, 'audit'])->name('export.audit');
+        Route::get('/export/analytics.csv', [Admin\ExportController::class, 'analytics'])->name('export.analytics');
+
         Route::get('/webhooks', [Admin\WebhookController::class, 'index'])->name('webhooks.index');
         Route::post('/webhooks', [Admin\WebhookController::class, 'store'])->name('webhooks.store');
         Route::post('/webhooks/{webhook}/toggle', [Admin\WebhookController::class, 'toggle'])->name('webhooks.toggle');

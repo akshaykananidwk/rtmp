@@ -2,7 +2,10 @@
 @section('title', 'Analytics')
 @section('content')
 @php($h = \App\Domain\Analytics\AnalyticsService::class)
-<div class="tabs">@foreach([7, 30, 90] as $d)<a href="{{ route('admin.analytics', ['days' => $d]) }}" class="{{ $days === $d ? 'active' : '' }}">Last {{ $d }} days</a>@endforeach</div>
+<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+  <div class="tabs">@foreach([7, 30, 90] as $d)<a href="{{ route('admin.analytics', ['days' => $d]) }}" class="{{ $days === $d ? 'active' : '' }}">Last {{ $d }} days</a>@endforeach</div>
+  <a class="btn btn-sm btn-outline" href="{{ route('admin.export.analytics', ['days' => $days]) }}">⬇ Download CSV</a>
+</div>
 <div class="card" style="margin-bottom:18px">
   <div class="card-header"><h3>This month's usage</h3><span class="small muted">since {{ $usage['period_start'] }}</span></div>
   <div class="grid grid-4">
