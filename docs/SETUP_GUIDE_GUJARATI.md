@@ -317,14 +317,12 @@ Overlay વાપરો એટલે video ને ફરી encode કરવુ�
 VPS નાનો હોય તો: resolution **720p** રાખો અથવા preset **ultrafast** કરો.
 Overlay ન વાપરો ત્યારે stream સીધો copy થાય છે — CPU લગભગ શૂન્ય.
 
-### Font જોઈશે
+### Font — કંઈ કરવાની જરૂર નથી
 
-લખાણ દોરવા માટે server પર font હોવો જોઈએ. ન હોય તો એક વાર:
+Font application સાથે જ આવે છે (`resources/fonts/overlay.ttf`), એટલે aaPanel નું
+`open_basedir` ચાલુ હોય તો પણ લખાણ બરાબર દોરાય છે.
 
-```bash
-sudo apt install -y fonts-dejavu-core
-sudo systemctl restart akstream-supervisor
-```
+બીજો font વાપરવો હોય તો `.env` માં: `OVERLAY_FONT=/path/to/your-font.ttf`
 
 
 ---

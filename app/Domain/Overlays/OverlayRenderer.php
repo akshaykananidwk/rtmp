@@ -69,15 +69,23 @@ class OverlayRenderer
         return 'el'.$index;
     }
 
+    /**
+     * The TrueType font used for text.
+     *
+     * A font ships with the application so overlays work on hosts whose open_basedir
+     * hides /usr/share/fonts; the system locations are only a fallback and every probe
+     * is guarded, because is_file() *throws* when a path is outside open_basedir.
+     */
     public function font(): ?string
     {
         $configured = (string) config('akstream.overlay.font', '');
-        if ($configured !== '' && is_file($configured)) {
+        if ($configured !== '' && self::readable($configured)) {
             return $configured;
         }
 
         foreach ([
             resource_path('fonts/overlay.ttf'),
+            resource_path('fonts/overlay-regular.ttf'),
             '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
             '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
             '/usr/share/fonts/dejavu/DejaVuSans.ttf',
@@ -85,12 +93,22 @@ class OverlayRenderer
             '/usr/share/fonts/gnu-free/FreeSans.ttf',
             '/System/Library/Fonts/Supplemental/Arial.ttf',
         ] as $candidate) {
-            if (is_file($candidate)) {
+            if (self::readable($candidate)) {
                 return $candidate;
             }
         }
 
         return null;
+    }
+
+    /** is_file()/is_readable() raise an ErrorException under open_basedir – never let that escape. */
+    public static function readable(string $path): bool
+    {
+        try {
+            return @is_file($path) && @is_readable($path);
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     /**
@@ -167,7 +185,7 @@ class OverlayRenderer
             }
 
             $file = $dir.'/'.$this->slotName($i).'.txt';
-            if (! is_file($file)) {
+            if (! self::readable($file)) {
                 File::put($file, (string) ($el['text'] ?? ''));
             }
 

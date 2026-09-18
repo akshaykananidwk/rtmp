@@ -38,7 +38,8 @@ return [
     ],
 
     'overlay' => [
-        // TrueType font used for text overlays; auto-detected when empty
+        // TrueType font for text overlays. Empty = use the font bundled in
+        // resources/fonts (works even when open_basedir hides /usr/share/fonts).
         'font' => env('OVERLAY_FONT', ''),
         'max_image_kb' => 2048,
     ],

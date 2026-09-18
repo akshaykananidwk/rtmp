@@ -191,3 +191,15 @@ flag and reloads PHP-FPM. Manually: aaPanel → Website → Config → PHP setti
 
 Relays are started by the CLI worker (`stream:supervisor`), which usually has no such restriction,
 so streaming can work while this warning is shown — but the panel cannot verify ffmpeg until it is fixed.
+
+## "open_basedir restriction in effect" on a panel-managed host
+
+aaPanel/cPanel confine PHP to the site directory, and `is_file()` on a path outside it does not
+return false — it raises an error. Every filesystem probe in the application is therefore guarded
+(`OverlayRenderer::readable()`, `App\Support\BinaryLocator`), and the overlay font ships inside
+`resources/fonts/`, so overlays work without touching `open_basedir` at all.
+
+`open_basedir` still matters for one thing: the panel cannot *verify* `/usr/bin/ffmpeg`, so the
+Streaming Engine health check shows a warning. Relays run from the CLI worker, which is normally
+unrestricted, so streaming itself is unaffected. To clear the warning:
+`sudo bash scripts/fix-open-basedir.sh /path/to/app`.
