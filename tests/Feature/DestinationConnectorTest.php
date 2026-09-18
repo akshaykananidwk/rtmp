@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Domain\Destinations\ConnectorRegistry;
+use App\Domain\Streaming\DistributionService;
+use App\Domain\Streaming\Engines\StreamEngineInterface;
+use App\Domain\Streaming\Relay\RelaySupervisor;
+use App\Domain\Streaming\StreamSessionService;
 use App\Models\PlatformAccount;
 use App\Models\PlatformToken;
 use App\Models\StreamDestination;
@@ -267,5 +271,78 @@ class DestinationConnectorTest extends TestCase
 
         // Facebook needs no key pasted anywhere: the official API provides it per broadcast.
         $this->assertStringContainsString('No stream key to copy', implode(' ', $definitions['facebook']->setupSteps));
+    }
+
+    public function test_a_destination_with_no_account_and_no_key_is_refused(): void
+    {
+        $this->pretendDestinationsAreReachable();
+        [$tenant, $user] = $this->adminSetup();
+        $this->actingAs($user);
+
+        // Facebook's key field is optional because a connected account can supply one.
+        // With neither, the destination can only fail mid-broadcast — so refuse it here.
+        $this->from('/admin/destinations/create')->post('/admin/destinations', [
+            'platform' => 'facebook',
+            'name' => 'ak news',
+            'p' => ['facebook' => ['opt_page_id' => '', 'stream_key' => '']],
+        ])->assertSessionHasErrors('stream_key');
+
+        $this->assertSame(0, StreamDestination::withoutGlobalScopes()->count());
+
+        // A key alone is enough...
+        $this->post('/admin/destinations', [
+            'platform' => 'facebook', 'name' => 'ak news',
+            'p' => ['facebook' => ['stream_key' => 'FB-KEY-123']],
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame(1, StreamDestination::withoutGlobalScopes()->count());
+    }
+
+    public function test_a_connected_account_alone_is_enough(): void
+    {
+        $this->pretendDestinationsAreReachable();
+        [$tenant, $user] = $this->adminSetup();
+        $this->actingAs($user);
+        $this->actAsTenant($tenant);
+
+        $account = PlatformAccount::create([
+            'tenant_id' => $tenant->id, 'platform' => 'facebook', 'external_id' => 'U1',
+            'name' => 'AK Page', 'meta' => ['pages' => [['id' => 'PAGE1', 'name' => 'AK Page']]],
+        ]);
+
+        $this->post('/admin/destinations', [
+            'platform' => 'facebook', 'name' => 'Via account',
+            'p' => ['facebook' => ['platform_account_id' => $account->id, 'opt_page_id' => 'PAGE1']],
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame(1, StreamDestination::withoutGlobalScopes()->count());
+    }
+
+    public function test_an_unpublishable_destination_says_what_is_missing_at_broadcast_time(): void
+    {
+        [$tenant, $user] = $this->adminSetup();
+        $this->actAsTenant($tenant);
+        config(['akstream.streaming.engine' => 'none', 'akstream.streaming.ffmpeg' => base_path('tests/Fixtures/fake-ffmpeg.sh')]);
+        app()->forgetInstance(StreamEngineInterface::class);
+        app()->forgetInstance(RelaySupervisor::class);
+
+        // Older rows saved before the rule above still exist and must explain themselves.
+        $broken = StreamDestination::factory()->create(['tenant_id' => $tenant->id, 'platform' => 'facebook', 'rtmp_url' => null]);
+        $broken->forceFill(['stream_key_encrypted' => null, 'stream_key_hint' => null])->save();
+
+        $endpoint = StreamEndpoint::factory()->create(['tenant_id' => $tenant->id]);
+        $session = app(StreamSessionService::class)->onSourceReady($endpoint);
+        app(DistributionService::class)->start($session, collect([$broken]), $user);
+
+        $supervisor = app(RelaySupervisor::class);
+        try {
+            $supervisor->tick();
+        } finally {
+            $supervisor->shutdown();
+        }
+
+        $error = (string) StreamSessionDestination::withoutGlobalScopes()->where('stream_destination_id', $broken->id)->value('last_error');
+        $this->assertStringContainsString('connect a', strtolower($error));
+        $this->assertStringContainsString('stream key', strtolower($error));
     }
 }

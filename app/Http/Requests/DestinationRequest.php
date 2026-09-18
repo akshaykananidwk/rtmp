@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\Domain\Destinations\ConnectorRegistry;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
@@ -77,6 +78,37 @@ class DestinationRequest extends FormRequest
         }
 
         return $rules;
+    }
+
+    /**
+     * A destination must have some way to publish, or it can only fail mid-broadcast.
+     *
+     * Per-field rules cannot see this: on a platform with OAuth the key is optional
+     * because an account may supply it, and the account is optional because a key may.
+     * One of the two has to be there.
+     */
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $registry = app(ConnectorRegistry::class);
+            $platform = (string) $this->input('platform', 'custom_rtmp');
+
+            if (! $registry->has($platform)) {
+                return;
+            }
+
+            $definition = $registry->definitions()[$platform];
+            $hasAccount = $definition->oauthSupported && $this->filled('platform_account_id');
+            $hasKey = $this->filled('stream_key') || $this->route('destination')?->stream_key_encrypted;
+
+            if ($hasAccount || $hasKey) {
+                return;
+            }
+
+            $validator->errors()->add('stream_key', $definition->oauthSupported
+                ? 'Connect a '.$definition->label.' account above, or paste a stream key — one of the two is needed before this can go live.'
+                : 'A stream key is needed before this can go live.');
+        });
     }
 
     public function messages(): array

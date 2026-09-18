@@ -193,7 +193,12 @@ class RelaySupervisor
         }
 
         if ($target === null) {
-            $this->fail($sd, 'Destination has no RTMP target configured');
+            // Say which of the two things is missing; "no target configured" left the
+            // operator guessing at the one moment they could least afford to.
+            $definition = $this->connectors->definitions()[$destination->platform] ?? null;
+            $this->fail($sd, $definition?->oauthSupported
+                ? 'Nothing to publish to: connect a '.$definition->label.' account, or paste a stream key on this destination.'
+                : 'Nothing to publish to: this destination has no stream key.');
 
             return;
         }
