@@ -33,6 +33,13 @@ class RoleSeeder extends Seeder
             'dashboard.view', 'streams.*', 'stream_keys.*', 'destinations.*', 'overlays.*', 'schedules.*', 'recordings.*',
             'analytics.view', 'users.*', 'backups.view', 'backups.manage', 'health.view', 'logs.view', 'settings.view', 'updates.view',
         ],
+        // Anyone can sign up, so an account owner is untrusted: everything here is scoped to
+        // their own tenant by TenantScope. No settings (SMTP and platform API secrets), no
+        // backups (every tenant's data), no updates (the server itself), no health (infra).
+        Role::ACCOUNT_OWNER => [
+            'dashboard.view', 'streams.*', 'stream_keys.*', 'destinations.*', 'overlays.*', 'schedules.*', 'recordings.*',
+            'analytics.view', 'users.*', 'logs.view',
+        ],
         Role::OPERATOR => [
             'dashboard.view', 'streams.view', 'streams.control', 'streams.logs', 'stream_keys.view', 'destinations.view', 'destinations.test', 'overlays.view', 'overlays.manage',
             'schedules.view', 'schedules.manage', 'recordings.view', 'recordings.download', 'analytics.view', 'health.view', 'logs.view',
@@ -45,6 +52,7 @@ class RoleSeeder extends Seeder
         $roles = [
             [Role::SUPER_ADMIN, 'Super Admin', 100, 'Full access to everything including system settings and updates.'],
             [Role::ADMIN, 'Admin', 80, 'Manage streaming, users and destinations.'],
+            [Role::ACCOUNT_OWNER, 'Account Owner', 70, 'Owns one account: full control of its streaming, none of the server.'],
             [Role::OPERATOR, 'Operator', 50, 'Can start/stop streams but cannot change system settings.'],
             [Role::VIEWER, 'Viewer', 10, 'Read-only dashboard access.'],
         ];

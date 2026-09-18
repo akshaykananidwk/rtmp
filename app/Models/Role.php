@@ -13,6 +13,13 @@ class Role extends Model
 
     public const ADMIN = 'admin';
 
+    /**
+     * Owner of a self-service account: full control of their own tenant, none of the
+     * server. Kept separate from ADMIN, whose holders are staff the operator vetted and
+     * who therefore keep settings, backups and updates.
+     */
+    public const ACCOUNT_OWNER = 'account_owner';
+
     public const OPERATOR = 'operator';
 
     public const VIEWER = 'viewer';

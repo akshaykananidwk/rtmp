@@ -44,8 +44,9 @@ class RegistrationTest extends TestCase
         $this->assertSame('ak-computer', $tenant->slug);
 
         // Owners administer their own tenant, never the server.
-        $this->assertTrue($user->hasRole(Role::ADMIN));
+        $this->assertTrue($user->hasRole(Role::ACCOUNT_OWNER));
         $this->assertFalse($user->hasRole(Role::SUPER_ADMIN));
+        $this->assertFalse($user->hasRole(Role::ADMIN));
 
         // A new account is immediately usable.
         $keys = StreamEndpoint::withoutGlobalScopes()->where('tenant_id', $tenant->id)->get();

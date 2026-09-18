@@ -31,10 +31,10 @@ class RegistrationService
         return (bool) $this->settings->get('registration', 'open', true);
     }
 
-    /** Owners of a new account get admin rights over their own tenant, never the server. */
+    /** Owners of a new account control their own tenant only — never the server. */
     public function ownerRole(): string
     {
-        return Role::ADMIN;
+        return Role::ACCOUNT_OWNER;
     }
 
     /**
