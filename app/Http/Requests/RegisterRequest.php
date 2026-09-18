@@ -21,7 +21,9 @@ class RegisterRequest extends FormRequest
             'business_name' => ['nullable', 'string', 'max:100'],
             // Accounts are global, not per tenant, so the address must be unique everywhere.
             'email' => ['required', 'email:rfc', 'max:190', 'unique:users,email'],
-            'password' => ['required', 'confirmed', Password::min(10)->letters()->numbers()],
+            // The same policy the panel enforces everywhere else: a self-service account
+            // must not be allowed a weaker password than one an admin creates.
+            'password' => ['required', 'confirmed', Password::defaults()],
             'terms' => ['accepted'],
         ];
     }

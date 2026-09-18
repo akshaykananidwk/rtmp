@@ -91,7 +91,9 @@ class ProfileController extends Controller
     public function createToken(Request $request): RedirectResponse
     {
         $data = $request->validate(['name' => ['required', 'string', 'max:60'], 'abilities' => ['nullable', 'array'], 'abilities.*' => ['string', Rule::in(['read', 'control', 'manage'])]]);
-        $token = $request->user()->createToken($data['name'], $data['abilities'] ?: ['read'], now()->addYear());
+        // Unticking every ability box leaves the key out of the validated data entirely,
+        // so it has to be defaulted rather than indexed — otherwise the form 500s.
+        $token = $request->user()->createToken($data['name'], ($data['abilities'] ?? []) ?: ['read'], now()->addYear());
         $this->audit->log('api_token.created', $request->user(), ['name' => $data['name']]);
 
         return back()->with('status', 'API token created. Copy it now – it will not be shown again.')->with('new_api_token', $token->plainTextToken);

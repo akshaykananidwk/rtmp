@@ -23,8 +23,8 @@ class RegistrationTest extends TestCase
             'name' => 'Akshay Kanani',
             'business_name' => 'AK Computer',
             'email' => 'new@example.com',
-            'password' => 'correct-horse-9',
-            'password_confirmation' => 'correct-horse-9',
+            'password' => 'Tr0ub4dor&3-AK-9x',
+            'password_confirmation' => 'Tr0ub4dor&3-AK-9x',
             'terms' => '1',
         ], $overrides);
     }
@@ -62,8 +62,8 @@ class RegistrationTest extends TestCase
         $this->post('/register', $this->form());
 
         $stored = (string) User::withoutGlobalScopes()->where('email', 'new@example.com')->value('password');
-        $this->assertNotSame('correct-horse-9', $stored);
-        $this->assertTrue(password_verify('correct-horse-9', $stored));
+        $this->assertNotSame('Tr0ub4dor&3-AK-9x', $stored);
+        $this->assertTrue(password_verify('Tr0ub4dor&3-AK-9x', $stored));
     }
 
     public function test_two_accounts_cannot_see_each_others_data(): void
