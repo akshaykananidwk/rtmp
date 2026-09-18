@@ -37,7 +37,7 @@ class FacebookConnector extends AbstractConnector
                 ['name' => 'page_id', 'label' => 'Page', 'type' => 'page_select', 'required' => false],
                 ['name' => 'title', 'label' => 'Live title', 'type' => 'text', 'required' => false],
                 ['name' => 'description', 'label' => 'Description', 'type' => 'textarea', 'required' => false],
-                ['name' => 'stream_key', 'label' => 'Manual stream key (fallback, optional)', 'type' => 'password', 'required' => false, 'help' => 'From Facebook Live Producer; used only when no account is connected (rtmps://live-api-s.facebook.com:443/rtmp)'],
+                ['name' => 'stream_key', 'label' => 'Manual stream key (fallback, optional)', 'type' => 'password', 'required' => false, 'help' => 'From Facebook Live Producer; used only when no account is connected. These keys are single-use and expire within hours — once one is spent, publishing fails with "Operation not permitted". Connect the account above instead and a fresh key is fetched for every broadcast.'],
             ],
             defaultRtmpUrl: 'rtmps://live-api-s.facebook.com:443/rtmp',
             icon: '📘',

@@ -40,6 +40,8 @@ class StreamSelfTestCommand extends Command
 
     private ?Process $publisher = null;
 
+    private ?float $startedAt = null;
+
     public function handle(StreamEngineInterface $engine, TenantContext $tenant): int
     {
         $this->line('');
@@ -64,16 +66,18 @@ class StreamSelfTestCommand extends Command
                 $this->checkEngineSeesTheStream($engine, $path);
                 $session = $this->checkSessionWasCreated($endpoint);
 
-                if ($session && $this->option('distribute')) {
-                    $this->checkDistribution($session);
-                }
-
+                // Branding first: the relays switch to the branded stream once it is up, so
+                // this is the order things really happen in.
                 if ($session && $session->overlay_id) {
                     $this->checkOverlay($session);
                 }
+
+                if ($session && $this->option('distribute')) {
+                    $this->checkDistribution($session);
+                }
             }
         } finally {
-            $this->stopPublishing();
+            $this->holdThenStop();
         }
 
         return $this->report();
@@ -142,6 +146,10 @@ class StreamSelfTestCommand extends Command
         }
 
         $seconds = max(5, (int) $this->option('seconds'));
+        // The checks below can take longer than the hold time the operator asked for, and a
+        // check that outlives the broadcast reports a failure that never happened. Allow a
+        // generous ceiling and stop the publisher ourselves once the report is done.
+        $limit = $seconds + 150;
         $target = $engine->internalSourceUrl($path);
 
         // Colour bars plus a tone: a real H.264/AAC stream, with nothing to install.
@@ -149,13 +157,14 @@ class StreamSelfTestCommand extends Command
             $binary, '-hide_banner', '-loglevel', 'error', '-nostdin',
             '-re', '-f', 'lavfi', '-i', 'testsrc2=size=1280x720:rate=30',
             '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=44100',
-            '-t', (string) $seconds,
+            '-t', (string) $limit,
             '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'zerolatency', '-pix_fmt', 'yuv420p', '-g', '60', '-b:v', '2000k',
             '-c:a', 'aac', '-b:a', '128k',
             '-f', 'flv', $target,
         ]);
         $this->publisher->setTimeout(null);
         $this->publisher->start();
+        $this->startedAt = microtime(true);
 
         $this->line('  Publishing '.$seconds.'s of colour bars and tone…');
         sleep(6);
@@ -240,7 +249,8 @@ class StreamSelfTestCommand extends Command
         }
 
         $total = StreamSessionDestination::withoutGlobalScopes()->where('stream_session_id', $session->id)->count();
-        $this->record('Destinations went live', $live === $total && $total > 0, $live.' of '.$total.' live');
+        $this->record('Destinations went live', $live === $total && $total > 0, $live.' of '.$total.' live'
+            .($live < $total && ! $this->stillPublishing() ? ' — the test broadcast ended first, re-run with a longer --seconds' : ''));
 
         if ($live < $total) {
             $this->diagnoseDestinations($session);
@@ -302,17 +312,38 @@ class StreamSelfTestCommand extends Command
             }
         }
 
-        $this->record('Overlay rendered into the stream', $status === 'live', $status === 'live'
-            ? 'the overlay encoder is publishing the branded stream'
-            : 'branding status is "'.($status ?: 'none').'" — see Live Logs for the encoder error');
+        $this->record('Overlay rendered into the stream', $status === 'live', match (true) {
+            $status === 'live' => 'the overlay encoder is publishing the branded stream',
+            ! $this->stillPublishing() => 'the test broadcast ended before the encoder came up — re-run with a longer --seconds',
+            default => 'branding status is "'.($status ?: 'none').'" — see Live Logs for the encoder error',
+        });
     }
 
-    private function stopPublishing(): void
+    /** True while the test source is still on air. */
+    private function stillPublishing(): bool
     {
-        if ($this->publisher && $this->publisher->isRunning()) {
-            $this->publisher->stop(5, defined('SIGTERM') ? SIGTERM : 15);
-            $this->line('  Test broadcast stopped.');
+        return $this->publisher !== null && $this->publisher->isRunning();
+    }
+
+    private function holdThenStop(): void
+    {
+        if ($this->publisher === null) {
+            return;
         }
+
+        $this->startedAt ??= microtime(true);
+        $remaining = (int) ceil(max(5, (int) $this->option('seconds')) - (microtime(true) - $this->startedAt));
+
+        if ($remaining > 0 && $this->stillPublishing()) {
+            $this->line('  Holding the broadcast for another '.$remaining.'s so you can watch the panel…');
+            sleep($remaining);
+        }
+
+        if ($this->stillPublishing()) {
+            $this->publisher->stop(5, defined('SIGTERM') ? SIGTERM : 15);
+        }
+
+        $this->line('  Test broadcast stopped.');
     }
 
     private function record(string $name, bool $ok, string $detail): void

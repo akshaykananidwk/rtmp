@@ -31,7 +31,7 @@ class InstagramConnector extends CustomRtmpConnector
             description: 'NOT SUPPORTED BY CURRENT OFFICIAL API for one-click Live. Paste the RTMPS URL and key from Instagram Live Producer (instagram.com → Create → Live → "Live Producer"). Available to eligible professional accounts only.',
             fields: [
                 ['name' => 'rtmp_url', 'label' => 'RTMPS URL (from Live Producer)', 'type' => 'text', 'required' => true, 'help' => 'Usually rtmps://edgetee-upload-...facebook.com:443/rtmp'],
-                ['name' => 'stream_key', 'label' => 'Stream Key', 'type' => 'password', 'required' => true],
+                ['name' => 'stream_key', 'label' => 'Stream Key', 'type' => 'password', 'required' => true, 'help' => 'Single-use: Live Producer issues a new key for every broadcast, so paste a fresh one each time. A spent key fails with "Operation not permitted".'],
             ],
             icon: '📸',
             docsUrl: 'https://help.instagram.com/',
