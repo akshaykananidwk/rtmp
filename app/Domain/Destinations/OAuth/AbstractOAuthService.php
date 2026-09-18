@@ -43,8 +43,15 @@ abstract class AbstractOAuthService
         return DB::transaction(function () use ($tenant, $user, $tokenData, $profile) {
             $account = PlatformAccount::withoutGlobalScopes()->updateOrCreate(
                 ['tenant_id' => $tenant->id, 'platform' => $this->platform(), 'external_id' => $profile['external_id']],
-                ['user_id' => $user?->id, 'name' => $profile['name'], 'avatar_url' => $profile['avatar'] ?? null, 'meta' => $profile['meta'] ?? [], 'status' => 'connected', 'deleted_at' => null]
+                ['user_id' => $user?->id, 'name' => $profile['name'], 'avatar_url' => $profile['avatar'] ?? null, 'meta' => $profile['meta'] ?? [], 'status' => 'connected']
             );
+
+            // Reconnecting an account that was disconnected earlier brings the row back.
+            // deleted_at cannot go through the array above: it is not fillable, and passing
+            // it there aborted the whole connection with a mass-assignment error.
+            if ($account->trashed()) {
+                $account->restore();
+            }
 
             $token = new PlatformToken(['platform_account_id' => $account->id, 'scopes' => $tokenData['scope'] ?? null]);
             $token->setAccessToken($tokenData['access_token']);
