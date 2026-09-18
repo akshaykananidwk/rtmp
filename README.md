@@ -49,6 +49,7 @@ OBS / vMix / Streamlabs ─▶ RTMP Ingest (MediaMTX) ─▶ Streaming Engine (F
 
 | Document | Content |
 |---|---|
+| **[docs/SETUP_GUIDE_GUJARATI.md](docs/SETUP_GUIDE_GUJARATI.md)** | **સંપૂર્ણ step-by-step setup guide (ગુજરાતી) — શરૂઆત અહીંથી કરો** |
 | [docs/INSTALLATION.md](docs/INSTALLATION.md) | Shared hosting + VPS installation, the `/install` wizard |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Ubuntu VPS: Apache, PHP, MariaDB, Redis, FFmpeg, MediaMTX, SSL, systemd, cron, firewall, monitoring |
 | [docs/STREAMING_SETUP.md](docs/STREAMING_SETUP.md) | MediaMTX configuration, engine hooks, supervisor, scaling |

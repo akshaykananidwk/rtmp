@@ -37,9 +37,15 @@ class RtmpCheck implements HealthCheckInterface
 
         $errno = 0;
         $errstr = '';
-        $sock = @fsockopen($host, $port, $errno, $errstr, 3);
+        try {
+            $sock = @fsockopen($host, $port, $errno, $errstr, 3);
+        } catch (\Throwable $e) {
+            return CheckResult::warn($this->name(), 'Cannot test the RTMP port from PHP: '.$e->getMessage(), $details);
+        }
         if (! $sock) {
-            return CheckResult::fail($this->name(), "RTMP port $port not accepting connections ($errstr)", $details);
+            $details['hint'] = 'Install and start the streaming engine on this server (see docs/STREAMING_SETUP.md), then re-run the check. Until then the dashboard works but no stream can be ingested.';
+
+            return CheckResult::fail($this->name(), "RTMP port $port not accepting connections ($errstr) – MediaMTX is not running", $details);
         }
         fclose($sock);
 

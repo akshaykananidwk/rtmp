@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Backups;
 
+use App\Support\BinaryLocator;
 use Illuminate\Support\Facades\DB;
-use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
 
 /**
@@ -44,7 +44,7 @@ class DatabaseDumper
     private function dumpMysql(string $targetFile, string $connection): array
     {
         $cfg = config("database.connections.$connection");
-        $bin = (new ExecutableFinder)->find('mysqldump') ?? (new ExecutableFinder)->find('mariadb-dump');
+        $bin = BinaryLocator::find('mysqldump') ?? BinaryLocator::find('mariadb-dump');
 
         if ($bin && function_exists('proc_open')) {
             $cnf = tempnam(sys_get_temp_dir(), 'akcnf');
@@ -68,7 +68,7 @@ class DatabaseDumper
     private function dumpPgsql(string $targetFile, string $connection): array
     {
         $cfg = config("database.connections.$connection");
-        $bin = (new ExecutableFinder)->find('pg_dump');
+        $bin = BinaryLocator::find('pg_dump');
         if (! $bin) {
             throw new \RuntimeException('pg_dump not found');
         }

@@ -6,10 +6,10 @@ namespace App\Domain\Updates;
 
 use App\Domain\Backups\BackupService;
 use App\Models\Update;
+use App\Support\BinaryLocator;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use PharData;
-use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\PhpExecutableFinder;
 use Symfony\Component\Process\Process;
 
@@ -194,7 +194,7 @@ class ReleaseManager
     {
         $lockChanged = collect($update->file_changes ?? [])->contains(fn ($c) => ($c['file'] ?? '') === 'composer.lock');
         $targetRoot = $this->strategy() === 'symlink' ? $release : $this->appRoot();
-        $composer = (new ExecutableFinder)->find('composer');
+        $composer = BinaryLocator::find('composer');
         $warnings = [];
 
         if ($lockChanged) {
