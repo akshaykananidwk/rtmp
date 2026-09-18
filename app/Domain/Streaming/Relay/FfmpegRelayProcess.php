@@ -25,6 +25,11 @@ final class FfmpegRelayProcess
 
     private int $bitrateKbps = 0;
 
+    /** Encoding speed relative to real time, from ffmpeg's own progress output. */
+    private float $speed = 0.0;
+
+    private int $fps = 0;
+
     private string $stderrTail = '';
 
     public function __construct(
@@ -40,7 +45,11 @@ final class FfmpegRelayProcess
 
         $cmd = [
             $bin, '-hide_banner', '-nostdin', '-loglevel', 'warning', '-nostats',
-            '-rw_timeout', '15000000', '-i', $this->sourceUrl,
+            '-rw_timeout', '15000000',
+            // Without a decent input queue a momentary encoder stall blocks the socket read,
+            // and the media server drops us as a slow reader.
+            '-thread_queue_size', '1024',
+            '-i', $this->sourceUrl,
         ];
 
         if ($isBranding) {
@@ -71,6 +80,12 @@ final class FfmpegRelayProcess
     {
         $this->lastBytesAt = microtime(true);
         $this->process->start();
+    }
+
+    /** The stream this process was started against; used to notice the source changing. */
+    public function sourceUrl(): string
+    {
+        return $this->sourceUrl;
     }
 
     public function pid(): ?int
@@ -109,6 +124,15 @@ final class FfmpegRelayProcess
                     $this->bytesOut = $v;
                     $advanced = true;
                 }
+            } elseif (str_starts_with($line, 'speed=')) {
+                // "speed=0.61x" — below 1x the encoder cannot keep up with the live source,
+                // and the media server eventually drops it as a slow reader.
+                $value = trim(rtrim(trim(substr($line, 6)), 'x'));
+                if (is_numeric($value)) {
+                    $this->speed = (float) $value;
+                }
+            } elseif (str_starts_with($line, 'fps=')) {
+                $this->fps = (int) round((float) substr($line, 4));
             }
         }
         // keep only unterminated tail
@@ -134,6 +158,34 @@ final class FfmpegRelayProcess
     public function bitrateKbps(): int
     {
         return max(0, $this->bitrateKbps);
+    }
+
+    /** Encoding speed relative to real time; 0.0 when ffmpeg has not reported one yet. */
+    public function speed(): float
+    {
+        return $this->speed;
+    }
+
+    public function fps(): int
+    {
+        return $this->fps;
+    }
+
+    /**
+     * Plain-language note when the host cannot encode this stream in real time.
+     *
+     * A too-slow encoder is dropped by the media server, which surfaces as an unhelpful
+     * "Broken pipe" — the number below is what actually explains it.
+     */
+    public function slownessNote(): ?string
+    {
+        if ($this->speed <= 0.0 || $this->speed >= 0.95) {
+            return null;
+        }
+
+        return 'The server encoded at '.rtrim(rtrim(number_format($this->speed, 2), '0'), '.').'x real time'
+            .($this->fps > 0 ? ' ('.$this->fps.' fps)' : '')
+            .' — too slow to keep up, so the media server dropped it. Lower the overlay resolution, bitrate or preset, or use a faster CPU.';
     }
 
     public function lastError(): string

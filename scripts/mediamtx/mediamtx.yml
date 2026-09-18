@@ -16,6 +16,10 @@ apiAddress: 127.0.0.1:9997
 rtmp: yes
 rtmpAddress: :1935
 rtmpEncryption: "no"
+
+# The overlay encoder is a reader of live/<key>. With the default queue a brief encoder
+# stall makes MediaMTX drop it, which ffmpeg reports only as "Broken pipe".
+writeQueueSize: 2048
 rtsp: no
 srt: yes
 srtAddress: :8890

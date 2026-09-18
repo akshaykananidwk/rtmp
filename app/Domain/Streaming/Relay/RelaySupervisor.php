@@ -44,6 +44,9 @@ class RelaySupervisor
 
     private array $startedAt = [];
 
+    /** Endpoints resolved during the current tick, so one pass does not re-query per relay. */
+    private array $endpointCache = [];
+
     public function __construct(
         private readonly StreamEngineInterface $engine,
         private readonly StreamLogger $logger,
@@ -59,6 +62,7 @@ class RelaySupervisor
     /** One reconciliation pass. Safe to call repeatedly. */
     public function tick(): void
     {
+        $this->endpointCache = [];
         $this->reconcileBranding();
         $this->reconcileDestinations();
         $this->reconcileRecordings();
@@ -113,6 +117,26 @@ class RelaySupervisor
             }
 
             if ($running) {
+                // The overlay encoder usually goes live a few seconds after the relays start.
+                // A relay holds whichever stream it was given, so without this it would keep
+                // copying the un-branded source and the overlay would never reach the platform.
+                $desired = $this->sourceFor($sd->session, $this->endpointFor($sd->session));
+
+                if ($this->relays[$sd->id]->sourceUrl() !== $desired) {
+                    $this->relays[$sd->id]->stop();
+                    unset($this->relays[$sd->id], $this->startedAt[$sd->id]);
+                    $this->logger->info(
+                        $sd->tenant_id,
+                        'destination.source_changed',
+                        ($sd->destination?->name ?? 'Destination').(str_contains($desired, 'branded/') ? ' switching to the overlay stream' : ' switching back to the original stream'),
+                        $sd->stream_session_id,
+                        $sd->stream_destination_id,
+                    );
+                    $this->spawn($sd);
+
+                    continue;
+                }
+
                 $this->updateRunning($sd);
 
                 continue;
@@ -174,8 +198,7 @@ class RelaySupervisor
             return;
         }
 
-        $endpoint = $session->endpoint()->withoutGlobalScopes()->first();
-        $source = $this->sourceFor($session, $endpoint);
+        $source = $this->sourceFor($session, $this->endpointFor($session));
 
         $relay = new FfmpegRelayProcess($sd->id, 'relay', $source, $target);
         try {
@@ -274,6 +297,15 @@ class RelaySupervisor
      * Where relays and the recorder read from: the branded stream when an overlay is
      * live, otherwise the raw ingest path. One encode feeds every destination.
      */
+    private function endpointFor(StreamSession $session): ?StreamEndpoint
+    {
+        if (! array_key_exists($session->id, $this->endpointCache)) {
+            $this->endpointCache[$session->id] = $session->endpoint()->withoutGlobalScopes()->first();
+        }
+
+        return $this->endpointCache[$session->id];
+    }
+
     private function sourceFor(StreamSession $session, ?StreamEndpoint $endpoint): string
     {
         if ($endpoint === null) {
@@ -320,6 +352,9 @@ class RelaySupervisor
 
                 // The encoder exited – report it and let the next tick restart it
                 $error = $brander->lastError();
+                if ($note = $brander->slownessNote()) {
+                    $error .= ' — '.$note;
+                }
                 unset($this->branders[$session->id]);
                 $session->forceFill(['branding_status' => 'failed'])->save();
                 $this->logger->error($session->tenant_id, 'overlay.failed', 'Overlay encoder stopped: '.$error, $session->id);

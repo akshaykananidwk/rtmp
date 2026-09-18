@@ -178,4 +178,51 @@ class DistributionTest extends TestCase
         $this->assertSame('ended', $session->fresh()->status);
         $this->actingAs($user)->get('/admin/history/'.$session->id)->assertOk()->assertSee($d->name);
     }
+
+    public function test_a_running_relay_switches_to_the_overlay_stream_when_it_goes_live(): void
+    {
+        [$tenant, $user] = $this->adminSetup();
+        $this->actAsTenant($tenant);
+        config(['akstream.streaming.engine' => 'mediamtx', 'akstream.streaming.internal_rtmp_url' => 'rtmp://127.0.0.1:1935']);
+        app()->forgetInstance(StreamEngineInterface::class);
+        app()->forgetInstance(RelaySupervisor::class);
+
+        $endpoint = StreamEndpoint::factory()->create(['tenant_id' => $tenant->id]);
+        StreamDestination::factory()->create(['tenant_id' => $tenant->id, 'name' => 'YouTube-like', 'rtmp_url' => 'rtmp://good.example.com/live2']);
+
+        $session = app(StreamSessionService::class)->onSourceReady($endpoint);
+        app(DistributionService::class)->start($session, null, $user);
+
+        $supervisor = app(RelaySupervisor::class);
+
+        try {
+            // The overlay encoder is not up yet, so the relay copies the plain ingest stream.
+            $supervisor->tick();
+            $this->assertStringContainsString('live/'.$endpoint->plainKey(), $this->relaySource($supervisor));
+            $this->assertStringNotContainsString('branded/', $this->relaySource($supervisor));
+
+            // A few seconds later the encoder reports it is rendering.
+            $session->forceFill(['branding_status' => 'live'])->save();
+            $supervisor->tick();
+
+            $this->assertStringContainsString('branded/'.$endpoint->plainKey(), $this->relaySource($supervisor),
+                'the relay must follow the branded stream, otherwise the overlay never reaches the platform');
+            $this->assertDatabaseHas('stream_destination_logs', ['event' => 'destination.source_changed']);
+
+            // If the encoder dies, the relay falls back so the platform keeps receiving video.
+            $session->forceFill(['branding_status' => 'failed'])->save();
+            $supervisor->tick();
+            $this->assertStringNotContainsString('branded/', $this->relaySource($supervisor));
+        } finally {
+            $supervisor->shutdown();
+        }
+    }
+
+    private function relaySource(RelaySupervisor $supervisor): string
+    {
+        $relays = (new \ReflectionProperty($supervisor, 'relays'))->getValue($supervisor);
+        $this->assertNotEmpty($relays, 'a relay should be running');
+
+        return reset($relays)->sourceUrl();
+    }
 }
