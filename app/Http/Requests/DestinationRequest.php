@@ -6,6 +6,7 @@ namespace App\Http\Requests;
 
 use App\Domain\Destinations\ConnectorRegistry;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
 
 class DestinationRequest extends FormRequest
@@ -13,6 +14,34 @@ class DestinationRequest extends FormRequest
     public function authorize(): bool
     {
         return $this->user() !== null;
+    }
+
+    /**
+     * The form renders one field block per platform and only shows the chosen one, so the
+     * per-platform boxes are named p[<platform>][<field>]. Lift the chosen platform's values
+     * onto the plain field names the rules below expect, and discard every other platform's —
+     * they belong to platforms the operator did not pick. API clients post plain names and
+     * send no "p" at all, so they pass through untouched.
+     */
+    protected function prepareForValidation(): void
+    {
+        $scoped = $this->input('p');
+
+        if (! is_array($scoped)) {
+            return;
+        }
+
+        $platform = (string) $this->input('platform', 'custom_rtmp');
+        $chosen = is_array($scoped[$platform] ?? null) ? $scoped[$platform] : [];
+
+        $rest = Arr::except($this->input(), ['p', 'rtmp_url', 'stream_key', 'platform_account_id']);
+        foreach (array_keys($rest) as $key) {
+            if (str_starts_with((string) $key, 'opt_')) {
+                unset($rest[$key]);
+            }
+        }
+
+        $this->replace(array_merge($rest, $chosen));
     }
 
     public function rules(): array

@@ -125,4 +125,120 @@ class DestinationConnectorTest extends TestCase
         $this->assertSoftDeleted('stream_destinations', ['id' => $d->id]);
         $this->assertDatabaseHas('activity_logs', ['action' => 'destination.deleted']);
     }
+
+    /**
+     * Build the POST payload a browser would send for a rendered form: every named control in
+     * the document, with the values the markup carries. No JavaScript runs here, which is the
+     * case that matters — the platform blocks the operator did not choose are still submitted.
+     */
+    private function browserPayload(string $html, array $typed = []): array
+    {
+        $doc = new \DOMDocument;
+        libxml_use_internal_errors(true);
+        $doc->loadHTML('<?xml encoding="utf-8" ?>'.$html);
+        libxml_clear_errors();
+        $xpath = new \DOMXPath($doc);
+        $flat = [];
+
+        foreach ($xpath->query('//form//input | //form//select | //form//textarea') as $el) {
+            $name = $el->getAttribute('name');
+            if ($name === '' || $el->hasAttribute('disabled') || $el->getAttribute('type') === 'submit') {
+                continue;
+            }
+            if ($el->getAttribute('type') === 'checkbox' && ! $el->hasAttribute('checked')) {
+                continue;
+            }
+            if ($el->nodeName === 'select') {
+                $value = '';
+                foreach ($xpath->query('.//option', $el) as $i => $opt) {
+                    if ($i === 0 || $opt->hasAttribute('selected')) {
+                        $value = $opt->getAttribute('value');
+                    }
+                    if ($opt->hasAttribute('selected')) {
+                        break;
+                    }
+                }
+            } elseif ($el->nodeName === 'textarea') {
+                $value = $el->textContent;
+            } else {
+                $value = $el->getAttribute('value');
+            }
+            $flat[$name] = $value;
+        }
+
+        foreach ($typed as $name => $value) {
+            $flat[$name] = $value;
+        }
+
+        $payload = [];
+        foreach ($flat as $name => $value) {
+            if (preg_match('/^([^\[]+)\[([^\]]+)\]\[([^\]]+)\]$/', $name, $m)) {
+                $payload[$m[1]][$m[2]][$m[3]] = $value;
+            } else {
+                $payload[$name] = $value;
+            }
+        }
+
+        return $payload;
+    }
+
+    public function test_the_rendered_form_submits_the_chosen_platforms_fields(): void
+    {
+        [$tenant, $user] = $this->adminSetup();
+        $this->actingAs($user);
+
+        $html = $this->get('/admin/destinations/create')->assertOk()->getContent();
+        $payload = $this->browserPayload($html, [
+            'platform' => 'youtube',
+            'name' => 'My channel',
+            'p[youtube][rtmp_url]' => 'rtmp://a.rtmp.youtube.com/live2',
+            'p[youtube][stream_key]' => 'yt-secret',
+            // A key typed for another platform before switching must not follow along.
+            'p[instagram][stream_key]' => 'ig-leftover',
+        ]);
+
+        $this->assertArrayHasKey('instagram', $payload['p'], 'every platform block is still posted');
+        $this->post('/admin/destinations', $payload)
+            ->assertSessionHasNoErrors()
+            ->assertRedirect('/admin/destinations');
+
+        $d = StreamDestination::withoutGlobalScopes()->firstOrFail();
+        $this->assertSame('youtube', $d->platform);
+        $this->assertSame('rtmp://a.rtmp.youtube.com/live2', $d->rtmp_url);
+        $this->assertSame('yt-secret', $d->streamKey());
+
+        // Editing goes through the same many-blocks form, so it can blank the URL the same way.
+        $html = $this->get('/admin/destinations/'.$d->id.'/edit')->assertOk()->getContent();
+        $payload = $this->browserPayload($html, ['name' => 'Renamed channel']);
+        $this->put('/admin/destinations/'.$d->id, $payload)
+            ->assertSessionHasNoErrors()
+            ->assertRedirect('/admin/destinations');
+
+        $d->refresh();
+        $this->assertSame('Renamed channel', $d->name);
+        $this->assertSame('rtmp://a.rtmp.youtube.com/live2', $d->rtmp_url, 'the URL survives a save that did not touch it');
+        $this->assertSame('yt-secret', $d->streamKey(), 'a blank key box keeps the stored secret');
+    }
+
+    public function test_a_rejected_form_comes_back_with_its_errors_not_a_500(): void
+    {
+        [$tenant, $user] = $this->adminSetup();
+        $this->actingAs($user);
+
+        $response = $this->from('/admin/destinations/create')->post('/admin/destinations', [
+            'platform' => 'custom_rtmp',
+            'name' => 'Bad URL',
+            'p' => ['custom_rtmp' => ['rtmp_url' => 'not a url', 'stream_key' => 'k']],
+        ]);
+
+        $response->assertRedirect('/admin/destinations/create');
+        $response->assertSessionHasErrors('rtmp_url');
+        $this->assertSame(0, StreamDestination::withoutGlobalScopes()->count());
+        $this->assertSame(0, \DB::table('error_logs')->count(), 'a rejected form is not a server error');
+
+        $this->followingRedirects()
+            ->get('/admin/destinations/create')
+            ->assertOk()
+            ->assertSee('The RTMP URL must look like');
+    }
 }

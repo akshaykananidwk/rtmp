@@ -15,17 +15,21 @@
       <div class="field"><label>Account name / label</label><input type="text" name="account_name" value="{{ old('account_name', $destination->account_name) }}" maxlength="100"></div>
     </div>
     @foreach($definitions as $def)
+      {{-- Every platform's fields live in the DOM at once and are only shown/hidden, so their
+           names are scoped per platform. Sharing bare names let a hidden platform's empty box
+           overwrite the one actually filled in. DestinationRequest lifts the chosen scope. --}}
       <div data-platform-fields="{{ $def->name }}">
         @if($def->oauthSupported)
           <div class="field"><label>Connected account</label>
             @php($accs = \App\Models\PlatformAccount::where('platform', $def->name)->get())
-            <select name="platform_account_id"><option value="">— none (manual RTMP key) —</option>@foreach($accs as $a)<option value="{{ $a->id }}" {{ old('platform_account_id', $destination->platform_account_id) === $a->id ? 'selected' : '' }}>{{ $a->name }}</option>@endforeach</select>
+            <select name="p[{{ $def->name }}][platform_account_id]"><option value="">— none (manual RTMP key) —</option>@foreach($accs as $a)<option value="{{ $a->id }}" {{ old('p.'.$def->name.'.platform_account_id', $destination->platform_account_id) === $a->id ? 'selected' : '' }}>{{ $a->name }}</option>@endforeach</select>
             <div class="help">No account? <a href="{{ route('admin.platforms.connect', $def->name) }}">Connect {{ $def->label }}</a> (official OAuth).</div></div>
         @endif
         @foreach($def->fields as $f)
           @php($isCore = in_array($f['name'], ['rtmp_url', 'stream_key'], true))
-          @php($name = $isCore ? $f['name'] : 'opt_'.$f['name'])
-          @php($val = $isCore ? ($f['name'] === 'rtmp_url' ? old('rtmp_url', $destination->rtmp_url ?: $def->defaultRtmpUrl) : '') : old($name, $destination->option($f['name'])))
+          @php($key = $isCore ? $f['name'] : 'opt_'.$f['name'])
+          @php($name = 'p['.$def->name.']['.$key.']')
+          @php($val = $isCore ? ($f['name'] === 'rtmp_url' ? old('p.'.$def->name.'.rtmp_url', $destination->rtmp_url ?: $def->defaultRtmpUrl) : '') : old('p.'.$def->name.'.'.$key, $destination->option($f['name'])))
           <div class="field"><label>{{ $f['label'] }}</label>
             @if($f['type'] === 'textarea')<textarea name="{{ $name }}">{{ $val }}</textarea>
             @elseif($f['type'] === 'select')<select name="{{ $name }}">@foreach($f['options'] as $k => $l)<option value="{{ $k }}" {{ (string) $val === (string) $k ? 'selected' : '' }}>{{ $l }}</option>@endforeach</select>

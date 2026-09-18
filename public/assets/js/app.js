@@ -126,7 +126,18 @@
   // Platform field switching in destination form
   const platformSel = $('#platform-select');
   if (platformSel) {
-    const apply = () => { const p = platformSel.value; $$('[data-platform-fields]').forEach(el => el.style.display = el.dataset.platformFields === p ? '' : 'none'); $$('[data-platform-info]').forEach(el => el.style.display = el.dataset.platformInfo === p ? '' : 'none'); };
+    const apply = () => {
+      const p = platformSel.value;
+      $$('[data-platform-fields]').forEach(el => {
+        const on = el.dataset.platformFields === p;
+        el.style.display = on ? '' : 'none';
+        // Hiding a field does not stop the browser submitting it. Disable the platforms the
+        // operator did not choose so their boxes (and any key typed before switching) stay out
+        // of the request entirely.
+        el.querySelectorAll('input, select, textarea').forEach(i => { i.disabled = !on; });
+      });
+      $$('[data-platform-info]').forEach(el => el.style.display = el.dataset.platformInfo === p ? '' : 'none');
+    };
     platformSel.addEventListener('change', apply); apply();
   }
 

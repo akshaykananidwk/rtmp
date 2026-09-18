@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Domain\Backups\BackupService;
 use App\Models\Backup;
 use App\Models\Tenant;
+use App\Support\Version;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -54,7 +55,7 @@ class BackupTest extends TestCase
         $this->assertFileExists($backup->db_location);
         $this->assertSame(hash_file('sha256', $backup->location), $backup->checksum);
         $this->assertGreaterThan(0, $backup->size_bytes);
-        $this->assertSame('1.0.0', $backup->app_version);
+        $this->assertSame(Version::current(), $backup->app_version);
         $this->assertFileExists($this->root.'/storage/app/backups/.htaccess');
 
         $zip = new \ZipArchive;

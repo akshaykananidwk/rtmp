@@ -13,9 +13,11 @@ use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -50,6 +52,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->dontReport([AuthenticationException::class]);
 
         $exceptions->render(function (Throwable $e, Request $request) {
+            // Laravel renders these itself: a validation failure goes back to the form with
+            // the messages, a missing login goes to the login page. They are not server
+            // faults, and render callbacks run before Laravel's own handling, so without
+            // this they would all become a 500 "something went wrong" page.
+            if ($e instanceof ValidationException || $e instanceof AuthenticationException || $e instanceof HttpResponseException) {
+                return null;
+            }
+
             $status = $e instanceof HttpExceptionInterface ? $e->getStatusCode() : 500;
 
             if ($status >= 500 && ! config('app.debug')) {

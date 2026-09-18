@@ -9,6 +9,7 @@
 | 500 page with Reference ID | Admin → Logs → Errors → open reference; or `storage/logs/laravel-*.log` |
 | OBS cannot connect | `systemctl status mediamtx`; port 1935 open; key enabled/not revoked; `authHTTPAddress` reaches the app (curl from the VPS) |
 | Stream never shows "Incoming Stream Detected" | hooks not reaching the app: check `STREAM_ENGINE_SECRET` in `mediamtx.yml`; run `php artisan stream:sync`; look at `journalctl -u mediamtx` |
+| "The rtmp url field is required" when adding a destination, although the box was filled | Fixed in 1.0.1 — every platform's field block was posted at once and the last one blanked the chosen platform. Update, then hard-refresh the page (Ctrl+F5) so the new `app.js` loads. |
 | Destination stuck in *connecting* / *reconnecting* | Live Logs show the ffmpeg error; verify platform key/URL, test destination; `journalctl -u akstream-supervisor` |
 | All destinations *pending*, nothing happens | supervisor not running: `systemctl start akstream-supervisor` (Health → Queue/Engine) |
 | YouTube "live streaming not enabled" | enable Live in YouTube Studio (24 h wait after phone verification) |
