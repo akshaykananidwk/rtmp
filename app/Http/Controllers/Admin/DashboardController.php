@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Domain\Accounts\OnboardingChecklist;
 use App\Domain\Analytics\AnalyticsService;
 use App\Domain\Health\HealthService;
 use App\Domain\Storage\DiskMonitor;
@@ -31,6 +32,7 @@ class DashboardController extends Controller
             'disk' => $disk->usage(),
             'upcoming' => ScheduledStream::whereIn('status', ['scheduled', 'waiting_for_source'])->orderBy('scheduled_at')->limit(5)->get(),
             'recent' => StreamSession::where('status', 'ended')->latest('started_at')->limit(5)->get(),
+            'onboarding' => app(OnboardingChecklist::class),
         ]);
     }
 

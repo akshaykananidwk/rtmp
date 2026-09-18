@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Domain\Accounts\OnboardingChecklist;
 use App\Domain\Settings\SettingsService;
+use App\Domain\Streaming\StreamSessionService;
 use App\Models\Role;
 use App\Models\StreamDestination;
 use App\Models\StreamEndpoint;
@@ -169,5 +171,35 @@ class RegistrationTest extends TestCase
         $this->post('/admin/stream-keys', ['name' => 'Two']);
 
         $this->assertSame(2, StreamEndpoint::withoutGlobalScopes()->count());
+    }
+
+    public function test_a_new_account_is_shown_what_to_do_next(): void
+    {
+        $this->seedSystem();
+        $this->post('/register', $this->form());
+
+        // Sign-up created the key, so that step is already ticked and the next one is shown.
+        $dashboard = $this->get('/admin')->assertOk();
+        $dashboard->assertSee('Getting started');
+        $dashboard->assertSee('Add where to stream');
+        $dashboard->assertSee('1 of 4 done');
+
+        // Calling the service straight needs the tenant context the HTTP middleware sets.
+        $this->actAsTenant(Tenant::findOrFail(User::withoutGlobalScopes()->where('email', 'new@example.com')->value('tenant_id')));
+        $checklist = app(OnboardingChecklist::class);
+        $this->assertFalse($checklist->isComplete());
+        $this->assertSame('destination', $checklist->nextStep()['key']);
+
+        $this->post('/admin/destinations', [
+            'platform' => 'custom_rtmp', 'name' => 'Backup relay',
+            'p' => ['custom_rtmp' => ['rtmp_url' => 'rtmp://a.example.com/live', 'stream_key' => 'k']],
+        ])->assertSessionHasNoErrors();
+
+        $this->get('/admin')->assertOk()->assertSee('Start streaming from OBS');
+
+        // Once a stream has actually run, the checklist stops taking up the dashboard.
+        $endpoint = StreamEndpoint::withoutGlobalScopes()->firstOrFail();
+        app(StreamSessionService::class)->onSourceReady($endpoint);
+        $this->get('/admin')->assertOk()->assertDontSee('Getting started');
     }
 }

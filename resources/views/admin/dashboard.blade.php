@@ -1,6 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Dashboard')
 @section('content')
+@include('components.onboarding')
 @php($p = $payload)
 <div data-status-url="{{ route('admin.dashboard.status') }}" data-interval="5000" data-initial='@json($p)'></div>
 <div class="grid grid-4" style="margin-bottom:18px">

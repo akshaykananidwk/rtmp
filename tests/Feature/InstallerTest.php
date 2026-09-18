@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Models\Role;
 use App\Models\User;
+use Database\Seeders\RoleSeeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Tests\TestCase;
@@ -64,7 +65,7 @@ class InstallerTest extends TestCase
         $user = User::withoutGlobalScopes()->where('email', 'admin@stream.test')->first();
         $this->assertNotNull($user);
         $this->assertTrue($user->hasRole(Role::SUPER_ADMIN));
-        $this->assertSame(count(\Database\Seeders\RoleSeeder::ROLE_PERMISSIONS), Role::count());
+        $this->assertSame(count(RoleSeeder::ROLE_PERMISSIONS), Role::count());
         $this->assertNotNull(Role::where('name', Role::ACCOUNT_OWNER)->first(), 'sign-ups need their own role installed');
         $this->assertDatabaseHas('update_protected_paths', ['path' => '.env']);
         $this->assertDatabaseHas('system_settings', ['group' => 'streaming', 'key' => 'rtmp_host']);
