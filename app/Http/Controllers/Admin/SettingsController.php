@@ -151,6 +151,7 @@ class SettingsController extends Controller
                 'max_stream_keys' => ['required', 'integer', 'min:1', 'max:100'],
                 'max_destinations' => ['required', 'integer', 'min:1', 'max:100'],
                 'max_monthly_minutes' => ['required', 'integer', 'min:0', 'max:1000000'],
+                'require_email_verification' => ['nullable', 'boolean'],
             ],
             'security' => [
                 'session_timeout' => ['required', 'integer', 'min:5', 'max:1440'],

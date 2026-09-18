@@ -53,6 +53,7 @@
       </div>
     </div>
     <div class="main">
+      @include('components.verify-email-banner')
       @include('components.flash')
       @yield('content')
     </div>

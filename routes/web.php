@@ -33,6 +33,12 @@ Route::middleware('installed')->group(function (): void {
         Route::get('/two-factor', [Auth\TwoFactorController::class, 'challenge'])->name('two-factor.challenge');
         Route::post('/two-factor', [Auth\TwoFactorController::class, 'verify'])->middleware('throttle:login');
     });
+    // Signed, so the link itself proves it came from us; usable while signed out too.
+    Route::get('/verify-email/{user}/{hash}', [Auth\EmailVerificationController::class, 'verify'])
+        ->middleware(['signed', 'throttle:6,1'])->name('verification.verify');
+    Route::post('/verify-email/resend', [Auth\EmailVerificationController::class, 'resend'])
+        ->middleware(['auth', 'throttle:password-reset'])->name('verification.resend');
+
     Route::post('/logout', [Auth\LoginController::class, 'logout'])->middleware('auth')->name('logout');
 
     // ------------------------------------------------------------ admin panel

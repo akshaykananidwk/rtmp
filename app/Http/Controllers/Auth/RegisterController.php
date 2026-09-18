@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
+use App\Domain\Accounts\EmailVerifier;
 use App\Domain\Accounts\RegistrationService;
 use App\Domain\Audit\AuditLogger;
 use App\Http\Controllers\Controller;
@@ -37,6 +38,8 @@ class RegisterController extends Controller
         $request->session()->regenerate();
         $user->forceFill(['last_login_at' => now(), 'last_login_ip' => $request->ip()])->save();
         $audit->log('auth.registered', $user, ['tenant' => $user->tenant_id], 'success', $user->id);
+        // Best effort: a box with no SMTP configured must still be able to sign people up.
+        app(EmailVerifier::class)->send($user);
 
         return redirect()->route('admin.obs-setup')
             ->with('status', 'Welcome to '.config('akstream.brand.name', 'AK COMPUTER').'! Your stream key is ready — set up OBS below, then add the platforms you want to stream to.');

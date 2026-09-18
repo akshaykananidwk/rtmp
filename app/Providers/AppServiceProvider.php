@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Domain\Accounts\EmailVerifier;
 use App\Domain\Accounts\RegistrationService;
 use App\Domain\Backups\BackupService;
 use App\Domain\Destinations\ConnectorRegistry;
@@ -150,7 +151,17 @@ class AppServiceProvider extends ServiceProvider
             // flag is shared rather than looked up in each template. Before installation
             // there is no database to ask, so assume closed.
             $view->with('registrationOpen', $this->registrationIsOpen());
+            $view->with('verificationRequired', $this->verificationIsRequired());
         });
+    }
+
+    private function verificationIsRequired(): bool
+    {
+        try {
+            return app(EmailVerifier::class)->isRequired();
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     private function registrationIsOpen(): bool

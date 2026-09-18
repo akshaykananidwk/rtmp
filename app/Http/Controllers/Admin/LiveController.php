@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Domain\Accounts\EmailVerifier;
 use App\Domain\Accounts\UsageService;
 use App\Domain\Streaming\DistributionService;
 use App\Domain\Streaming\Engines\StreamEngineInterface;
@@ -46,6 +47,10 @@ class LiveController extends Controller
 
         // A monthly allowance is only real if it stops something; refuse here, where the
         // operator is present to read why, rather than failing silently in the supervisor.
+        if (app(EmailVerifier::class)->blocks($request->user())) {
+            return back()->with('error', 'Confirm your e-mail address before streaming — use the link we sent to '.$request->user()->email.'.');
+        }
+
         $usage = app(UsageService::class);
         if ($usage->exceeded($request->user())) {
             return back()->with('error', $usage->exceededMessage());
