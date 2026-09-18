@@ -30,12 +30,27 @@ class MediaMtxEngine implements StreamEngineInterface
 
         return new self(
             rtrim((string) $c['engine_api_url'], '/'),
-            rtrim((string) $c['internal_rtmp_url'], '/'),
+            self::rtmpOrigin((string) $c['internal_rtmp_url']),
             rtrim((string) app(SettingsService::class)->get('streaming', 'rtmp_host', $c['public_rtmp_url']), '/'),
             rtrim((string) $c['hls_url'], '/'),
             env('STREAM_SERVER_API_USER'),
             env('STREAM_SERVER_API_PASSWORD'),
         );
+    }
+
+    /**
+     * Host and port only, for the base every internal source URL is built on.
+     *
+     * Callers pass a complete MediaMTX path ("live/<key>", "branded/<key>"), while the
+     * configured value is often copied from the OBS ingest URL and ends in "/live". Joining
+     * the two produced "live/live/<key>" — a path nothing publishes to, so FFmpeg could not
+     * open any source and every relay failed with "Input/output error".
+     */
+    public static function rtmpOrigin(string $url): string
+    {
+        $url = rtrim(trim($url), '/');
+
+        return preg_match('#^(rtmps?://[^/]+)#i', $url, $m) === 1 ? $m[1] : $url;
     }
 
     public function name(): string

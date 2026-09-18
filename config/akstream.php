@@ -22,7 +22,7 @@ return [
     'streaming' => [
         'public_rtmp_url' => env('STREAM_SERVER_URL', 'rtmp://localhost/live'),
         'engine_api_url' => env('STREAM_SERVER_API_URL', 'http://127.0.0.1:9997'),
-        'internal_rtmp_url' => env('STREAM_INTERNAL_RTMP_URL', 'rtmp://127.0.0.1:1935/live'),
+        'internal_rtmp_url' => env('STREAM_INTERNAL_RTMP_URL', 'rtmp://127.0.0.1:1935'),
         'hls_url' => env('STREAM_HLS_URL', 'http://127.0.0.1:8888'),
         'engine_secret' => env('STREAM_ENGINE_SECRET'),
         'engine' => env('STREAM_ENGINE', 'mediamtx'),

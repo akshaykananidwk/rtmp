@@ -70,6 +70,7 @@ $st = app(App\Domain\Streaming\SupervisorStatus::class);
 echo "supervisor beat: ", $st->secondsSinceBeat() === null ? "NEVER - it is not running" : $st->secondsSinceBeat()."s ago".($st->isRunning() ? " (ok)" : " (STALE)"), "\n";
 echo "supervisor node: ", $st->nodeId() ?: "-", "\n";
 echo "configured node: ", config("akstream.streaming.node_id") ?: "-", "\n";
+echo "internal source: ", app(App\Domain\Streaming\Engines\StreamEngineInterface::class)->internalSourceUrl("live/<key>"), "\n";
 foreach (App\Models\StreamSessionDestination::withoutGlobalScopes()->whereHas("session", fn($q) => $q->withoutGlobalScopes()->whereIn("status", ["detected","live"]))->get() as $sd) {
   echo "  dest ", substr($sd->stream_destination_id, 0, 8), " status=", $sd->status, " want=", $sd->desired_state, " node=", $sd->node_id ?: "null", " retries=", $sd->retry_count, "\n";
   if ($sd->last_error) { echo "       last error: ", $sd->last_error, "\n"; }

@@ -54,7 +54,7 @@ set_env STREAM_ENGINE mediamtx
 set_env STREAM_ENGINE_SECRET "$SECRET"
 set_env STREAM_SERVER_URL "rtmp://$HOST/live"
 set_env STREAM_SERVER_API_URL "http://127.0.0.1:9997"
-set_env STREAM_INTERNAL_RTMP_URL "rtmp://127.0.0.1:1935/live"
+set_env STREAM_INTERNAL_RTMP_URL "rtmp://127.0.0.1:1935"
 set_env STREAM_HLS_URL "http://127.0.0.1:8888"
 set_env STREAM_NODE_ID "media-1"
 set_env FFMPEG_BINARY "$FFMPEG_BIN"
