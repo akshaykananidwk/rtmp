@@ -57,22 +57,26 @@ Script root તરીકે ચાલ્યું હોય તો files ની 
 sudo bash scripts/fix-permissions.sh /www/wwwroot/rtmp.akdwk.in
 ```
 
-### Step 1.3 — aaPanel નું open_basedir ખોલો
+### Step 1.3 — PHP ને ffmpeg દેખાડો (open_basedir)
 
-> ⚠️ **આ terminal નો command નથી** — આ aaPanel ના PHP settings માં લખવાનું છે.
-> Terminal માં paste કરશો તો "No such file or directory" આવશે.
+aaPanel PHP ને ફક્ત website folder સુધી જ જોવા દે છે, એટલે એ `ffmpeg` શોધી શકતું નથી
+(Health માં "Engine reachable but ffmpeg binary not found" દેખાય છે).
 
-aaPanel PHP ને ફક્ત website folder સુધી જ જોવા દે છે, એટલે એ `ffmpeg` ને શોધી નથી શકતું.
+**એક command થી થઈ જશે:**
 
-aaPanel → **Website** → `rtmp.akdwk.in` → **Config** → **PHP settings** (અથવા *Configuration file*) →
-`open_basedir` વાળી લીટી શોધો → એના અંતે આ ઉમેરો:
-
-```
-:/usr/bin/:/usr/local/bin/:/tmp/
+```bash
+sudo bash scripts/fix-open-basedir.sh /www/wwwroot/rtmp.akdwk.in
 ```
 
-Save → **PHP restart** કરો.
-*(સૌથી સહેલું: એ લીટીની શરૂઆતમાં `;` મૂકીને એને comment કરી દો.)*
+આ `.user.ini` નો immutable flag કાઢી, જરૂરી paths ઉમેરી, flag પાછો મૂકી, PHP reload કરે છે.
+
+**હાથે કરવું હોય તો:** aaPanel → **Website** → `rtmp.akdwk.in` → **Config** → **PHP settings** →
+`open_basedir` લીટીના અંતે `:/usr/bin/:/usr/local/bin/:/tmp/` ઉમેરો → Save → PHP restart.
+
+> ⚠️ આ terminal નો command નથી — terminal માં paste કરશો તો "No such file or directory" આવશે.
+
+> **નોંધ:** આ warning હોય તો પણ streaming ચાલી શકે છે, કારણ કે relay process CLI PHP થી ચાલે છે
+> જેના પર સામાન્ય રીતે આ પ્રતિબંધ હોતો નથી. છતાં ઠીક કરી લેવું સારું.
 
 ### Step 1.4 — ચકાસો
 

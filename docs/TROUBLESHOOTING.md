@@ -176,3 +176,18 @@ Its output masks stream keys, tokens and passwords, so it is safe to share.
 Start the worker: `sudo systemctl enable --now akstream-queue`, or on shared hosting add the cron
 line from *Admin → Cron Setup*. Without it, platform API calls (creating YouTube broadcasts and
 Facebook live videos), notifications and updates never run.
+
+## Streaming Engine: "Engine reachable but ffmpeg binary not found"
+
+MediaMTX is running, but PHP cannot see `/usr/bin/ffmpeg` because the panel restricts
+`open_basedir` to the website directory (aaPanel stores this in an immutable `<site>/.user.ini`).
+
+```bash
+sudo bash scripts/fix-open-basedir.sh /path/to/app
+```
+
+The script clears the immutable flag, appends `/usr/bin/:/usr/local/bin/:/bin/:/tmp/`, restores the
+flag and reloads PHP-FPM. Manually: aaPanel → Website → Config → PHP settings → `open_basedir`.
+
+Relays are started by the CLI worker (`stream:supervisor`), which usually has no such restriction,
+so streaming can work while this warning is shown — but the panel cannot verify ffmpeg until it is fixed.
