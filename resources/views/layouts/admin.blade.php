@@ -31,6 +31,7 @@
         @can($perm)<a href="{{ route($route) }}" class="{{ request()->routeIs(str_replace('.index', '.*', $route)) || request()->routeIs($route) ? 'active' : '' }}">{{ $icon }} {{ $label }}</a>@endcan
       @endforeach
       <div class="sec">System</div>
+      @can('destinations.view')<a href="{{ route('admin.webhooks.index') }}" class="{{ request()->routeIs('admin.webhooks.*') ? 'active' : '' }}">🔗 Webhooks</a>@endcan
       @can('users.view')<a href="{{ route('admin.users.index') }}" class="{{ request()->routeIs('admin.users.*') ? 'active' : '' }}">👥 Users</a>@endcan
       @can('backups.view')<a href="{{ route('admin.backups.index') }}" class="{{ request()->routeIs('admin.backups.*') ? 'active' : '' }}">💾 Backups</a>@endcan
       @can('updates.view')<a href="{{ route('admin.updates.index') }}" class="{{ request()->routeIs('admin.updates.*') ? 'active' : '' }}">⬆️ Updates</a>@endcan

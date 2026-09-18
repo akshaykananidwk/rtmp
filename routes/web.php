@@ -130,6 +130,12 @@ Route::middleware('installed')->group(function (): void {
         Route::get('/logs/audit', [Admin\LogController::class, 'audit'])->name('logs.audit');
         Route::get('/logs/errors', [Admin\LogController::class, 'errors'])->name('logs.errors');
         Route::get('/logs/errors/{error}', [Admin\LogController::class, 'error'])->name('logs.error');
+        Route::get('/webhooks', [Admin\WebhookController::class, 'index'])->name('webhooks.index');
+        Route::post('/webhooks', [Admin\WebhookController::class, 'store'])->name('webhooks.store');
+        Route::post('/webhooks/{webhook}/toggle', [Admin\WebhookController::class, 'toggle'])->name('webhooks.toggle');
+        Route::post('/webhooks/{webhook}/test', [Admin\WebhookController::class, 'test'])->name('webhooks.test');
+        Route::delete('/webhooks/{webhook}', [Admin\WebhookController::class, 'destroy'])->name('webhooks.destroy');
+
         Route::post('/invitations', [Admin\InvitationController::class, 'store'])->name('invitations.store');
         Route::delete('/invitations/{invitation}', [Admin\InvitationController::class, 'destroy'])->name('invitations.destroy');
 
