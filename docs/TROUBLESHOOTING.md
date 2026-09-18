@@ -104,3 +104,10 @@ Most common causes, in order:
 
 To see the real message temporarily, set `APP_DEBUG=true` in `.env`, reload, then set it back to
 `false` — never leave debug on in production.
+
+## "Something went wrong. Reference ID: ERR-…" during setup
+
+The application booted but a request failed. **Before installation** the page also shows the
+exception class and the (secret-masked) message, plus a link to `diagnose.php` — fix what it names
+and reload. **After installation** only the reference is shown; look it up in
+*Admin → Logs → Errors* (or `storage/logs/laravel-*.log`).

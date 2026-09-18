@@ -8,6 +8,7 @@ use App\Http\Middleware\RequestId;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetTenantContext;
 use App\Http\Middleware\VerifyEngineSecret;
+use App\Support\SecretMasker;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -58,7 +59,18 @@ return Application::configure(basePath: dirname(__DIR__))
                     return response()->json(['message' => 'Something went wrong.', 'reference' => $ref], 500);
                 }
 
-                return response()->view('errors.500', ['reference' => $ref], 500);
+                // Before installation there is no admin panel to look the reference up in, so show
+                // the (secret-masked) reason directly — it is the only way to fix the server.
+                $detail = null;
+                if (! file_exists(storage_path('app/installed.lock'))) {
+                    $detail = [
+                        'exception' => class_basename($e),
+                        'message' => SecretMasker::maskString($e->getMessage()),
+                        'file' => str_replace(base_path(), '', $e->getFile()).':'.$e->getLine(),
+                    ];
+                }
+
+                return response()->view('errors.500', ['reference' => $ref, 'detail' => $detail], 500);
             }
 
             return null;
