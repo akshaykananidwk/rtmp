@@ -64,6 +64,26 @@ echo "branding status: ", $s?->branding_status ?: "-", "\n";
 echo "overlays       : ", App\Models\Overlay::withoutGlobalScopes()->count(), "\n";
 echo "keys w/overlay : ", App\Models\StreamEndpoint::withoutGlobalScopes()->whereNotNull("overlay_id")->count(), "\n";' 2>/dev/null | tail -6
 
+hr "DISTRIBUTION STATE"
+sudo -u "$WEBU" "$PHPBIN" artisan tinker --execute='
+$st = app(App\Domain\Streaming\SupervisorStatus::class);
+echo "supervisor beat: ", $st->secondsSinceBeat() === null ? "NEVER - it is not running" : $st->secondsSinceBeat()."s ago".($st->isRunning() ? " (ok)" : " (STALE)"), "\n";
+echo "supervisor node: ", $st->nodeId() ?: "-", "\n";
+echo "configured node: ", config("akstream.streaming.node_id") ?: "-", "\n";
+foreach (App\Models\StreamSessionDestination::withoutGlobalScopes()->whereHas("session", fn($q) => $q->withoutGlobalScopes()->whereIn("status", ["detected","live"]))->get() as $sd) {
+  echo "  dest ", substr($sd->stream_destination_id, 0, 8), " status=", $sd->status, " want=", $sd->desired_state, " node=", $sd->node_id ?: "null", " retries=", $sd->retry_count, "\n";
+  if ($sd->last_error) { echo "       last error: ", $sd->last_error, "\n"; }
+}' 2>/dev/null | mask | tail -20
+echo "  (a destination stuck at status=pending with no supervisor beat means the supervisor is down:"
+echo "   sudo systemctl start akstream-supervisor)"
+
+hr "FFMPEG"
+if command -v ffmpeg >/dev/null 2>&1; then
+  echo "  ffmpeg: $(command -v ffmpeg) ($(ffmpeg -version 2>/dev/null | head -1))"
+else
+  echo "  ffmpeg: NOT FOUND - relays cannot start. Install it (apt install ffmpeg / yum install ffmpeg)."
+fi
+
 hr "MEDIAMTX LOG (last 15)"
 journalctl -u mediamtx -n 15 --no-pager 2>/dev/null | mask || echo "no journal"
 

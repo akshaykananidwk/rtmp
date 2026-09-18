@@ -79,6 +79,14 @@
       set('incoming', s.incoming_bitrate != null ? s.incoming_bitrate + ' kbps' : null); set('outgoing', s.outgoing_bitrate != null ? s.outgoing_bitrate + ' kbps' : null);
       set('recording', s.recording === undefined ? null : (s.recording ? 'Enabled' : 'Disabled')); set('started', startedAt ? startedAt.toLocaleTimeString() : null);
       set('viewers', p.viewers); set('dest_total', p.summary.total); set('dest_live', p.summary.live); set('dest_failed', p.summary.failed); set('dest_connecting', p.summary.connecting);
+      // A stopped supervisor leaves every destination at "pending" with no error of its own,
+      // so surface it here rather than letting the operator watch a stream that goes nowhere.
+      const sup = $('[data-supervisor-alert]');
+      if (sup && p.supervisor) {
+        sup.style.display = p.supervisor.ok ? 'none' : '';
+        const why = $('[data-supervisor-problem]');
+        if (why) why.textContent = p.supervisor.problem || '';
+      }
       const list = $('[data-destinations]');
       if (list) {
         list.innerHTML = p.destinations.length ? p.destinations.map(d => `<div class="dest-row"><div><div class="name">${esc(d.name || '')} <span class="pill">${esc(d.platform || '')}</span></div><div class="meta">${d.last_error ? '⚠ ' + esc(d.last_error) + (d.last_error_at ? ' · ' + esc(d.last_error_at) : '') : (d.last_success_at ? 'OK ' + esc(d.last_success_at) : '')}${d.retry_count ? ' · retries: ' + d.retry_count : ''}${d.bitrate ? ' · ' + d.bitrate + ' kbps' : ''}${d.watch_url ? ' · <a href="' + esc(d.watch_url) + '" target="_blank" rel="noopener">watch</a>' : ''}</div></div><div style="display:flex;gap:6px;align-items:center">${badge(d.status)}${list.dataset.canControl === '1' ? `<form method="post" action="${list.dataset.restartUrl.replace('__ID__', d.id)}"><input type="hidden" name="_token" value="${csrf()}"><button class="btn btn-sm btn-outline" title="Restart">↻</button></form><form method="post" action="${list.dataset.stopUrl.replace('__ID__', d.id)}" data-confirm="Stop this destination?"><input type="hidden" name="_token" value="${csrf()}"><button class="btn btn-sm btn-outline" title="Stop">■</button></form>` : ''}</div></div>`).join('') : '<div class="empty">No destinations active</div>';

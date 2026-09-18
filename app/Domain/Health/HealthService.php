@@ -15,6 +15,7 @@ use App\Domain\Health\Checks\RtmpCheck;
 use App\Domain\Health\Checks\SslCheck;
 use App\Domain\Health\Checks\StorageCheck;
 use App\Domain\Health\Checks\StreamingEngineCheck;
+use App\Domain\Health\Checks\SupervisorCheck;
 use App\Events\SystemAlert;
 use App\Models\HealthCheck;
 use App\Support\SecretMasker;
@@ -32,6 +33,7 @@ class HealthService
         StorageCheck::class,
         PhpExtensionsCheck::class,
         StreamingEngineCheck::class,
+        SupervisorCheck::class,
         RtmpCheck::class,
         SslCheck::class,
         GitHubCheck::class,

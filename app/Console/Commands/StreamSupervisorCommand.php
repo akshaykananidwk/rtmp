@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Domain\Streaming\Relay\RelaySupervisor;
+use App\Domain\Streaming\SupervisorStatus;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Cache;
 
 class StreamSupervisorCommand extends Command
 {
@@ -30,7 +30,7 @@ class StreamSupervisorCommand extends Command
         do {
             try {
                 $supervisor->tick();
-                Cache::put('stream:supervisor:heartbeat:'.$supervisor->nodeId(), now()->timestamp, 120);
+                SupervisorStatus::beat($supervisor->nodeId());
             } catch (\Throwable $e) {
                 $this->error('tick failed: '.$e->getMessage());
                 report($e);

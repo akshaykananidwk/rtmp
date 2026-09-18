@@ -8,6 +8,7 @@ use App\Domain\Analytics\AnalyticsService;
 use App\Domain\Health\HealthService;
 use App\Domain\Storage\DiskMonitor;
 use App\Domain\Streaming\DistributionService;
+use App\Domain\Streaming\SupervisorStatus;
 use App\Http\Controllers\Controller;
 use App\Models\ScheduledStream;
 use App\Models\StreamDestination;
@@ -62,6 +63,8 @@ class DashboardController extends Controller
             ])->values()
             : collect();
 
+        $supervisor = app(SupervisorStatus::class);
+
         $viewers = null;
         if ($session) {
             $sum = 0;
@@ -95,6 +98,9 @@ class DashboardController extends Controller
             ] : null,
             'summary' => $summary,
             'destinations' => $destinations,
+            // Nothing reaches a platform while this is down, and the destinations give no
+            // clue — they just stay "pending" — so the panel has to say it out loud.
+            'supervisor' => ['ok' => $supervisor->isRunning(), 'problem' => $supervisor->problem()],
             'viewers' => $viewers,
             'counts' => [
                 'endpoints' => StreamEndpoint::where('is_enabled', true)->count(),

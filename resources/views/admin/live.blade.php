@@ -3,6 +3,14 @@
 @section('content')
 @php($p = $payload)
 <div data-status-url="{{ route('admin.dashboard.status') }}" data-interval="4000" data-initial='@json($p)'></div>
+<div data-supervisor-alert class="alert alert-error" @if($p['supervisor']['ok']) style="display:none" @endif>
+  <strong>Nothing is being sent to your destinations.</strong>
+  <span data-supervisor-problem>{{ $p['supervisor']['problem'] }}</span>
+  <div class="small" style="margin-top:8px">The relay supervisor is the process that pushes your video to each platform. On the server run:<br>
+    <code>sudo systemctl start akstream-supervisor</code> &nbsp; then &nbsp; <code>sudo systemctl enable akstream-supervisor</code><br>
+    If it will not start: <code>sudo journalctl -u akstream-supervisor -n 50 --no-pager</code>
+  </div>
+</div>
 <div class="grid grid-2" style="margin-bottom:18px">
   <div class="card" style="text-align:center">
     <span data-live-indicator class="live-indicator {{ $p['live'] ? 'on' : 'off' }}"><span class="dot"></span> {{ $p['live'] ? 'LIVE' : 'OFFLINE' }}</span>

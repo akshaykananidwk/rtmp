@@ -21,8 +21,10 @@ class HealthTest extends TestCase
         app()->forgetInstance(StreamEngineInterface::class);
         $run = app(HealthService::class)->run('manual');
         $this->assertTrue($run['critical_ok'], app(HealthService::class)->report($run));
-        $this->assertCount(11, $run['results']);
-        $this->assertSame(11, HealthCheck::where('run_id', $run['run_id'])->count());
+        $expected = count(app(HealthService::class)->checks());
+        $this->assertCount($expected, $run['results']);
+        $this->assertSame($expected, HealthCheck::where('run_id', $run['run_id'])->count());
+        $this->assertContains('supervisor', collect($run['results'])->pluck('service')->all());
         $report = app(HealthService::class)->report($run);
         $this->assertStringContainsString('Application', $report);
         $this->assertStringContainsString('Database', $report);

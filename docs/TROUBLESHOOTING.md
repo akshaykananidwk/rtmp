@@ -11,7 +11,7 @@
 | Stream never shows "Incoming Stream Detected" | hooks not reaching the app: check `STREAM_ENGINE_SECRET` in `mediamtx.yml`; run `php artisan stream:sync`; look at `journalctl -u mediamtx` |
 | "The rtmp url field is required" when adding a destination, although the box was filled | Fixed in 1.0.1 — every platform's field block was posted at once and the last one blanked the chosen platform. Update, then hard-refresh the page (Ctrl+F5) so the new `app.js` loads. |
 | Destination stuck in *connecting* / *reconnecting* | Live Logs show the ffmpeg error; verify platform key/URL, test destination; `journalctl -u akstream-supervisor` |
-| All destinations *pending*, nothing happens | supervisor not running: `systemctl start akstream-supervisor` (Health → Queue/Engine) |
+| All destinations *pending*, nothing happens | The relay supervisor is down — it is the process that pushes video to the platforms; the web panel only records the request. Live Stream now shows a red banner saying so, and Health → Relay Supervisor fails. Fix: `sudo systemctl start akstream-supervisor && sudo systemctl enable akstream-supervisor`. If it refuses to start: `sudo journalctl -u akstream-supervisor -n 50 --no-pager`, or run one pass in the foreground to see the error: `sudo -u www php artisan stream:supervisor --once` |
 | YouTube "live streaming not enabled" | enable Live in YouTube Studio (24 h wait after phone verification) |
 | Facebook token expired | reconnect the account (long-lived tokens ≈ 60 days) |
 | Queue jobs not processed | `systemctl status akstream-queue` or cron `queue:work --stop-when-empty` on shared hosting |
