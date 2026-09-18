@@ -135,7 +135,7 @@ class InstallerService
             'DB_DATABASE' => ($db['driver'] ?? 'mysql') === 'sqlite' ? $this->sqlitePath($db) : $db['database'],
             'DB_USERNAME' => $db['username'] ?? '',
             'DB_PASSWORD' => $db['password'] ?? '',
-            'SESSION_DRIVER' => 'database',
+            'SESSION_DRIVER' => 'database',   // safe now: the database exists and is migrated
             'SESSION_SECURE_COOKIE' => str_starts_with($app['url'], 'https://'),
             'QUEUE_CONNECTION' => 'database',
             'CACHE_STORE' => 'database',

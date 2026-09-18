@@ -47,6 +47,8 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->useDatabaseFreeDriversBeforeInstall();
+
         $this->app->singleton(TenantContext::class);
         $this->app->singleton(SettingsService::class);
         $this->app->singleton(ProtectedPaths::class);
@@ -67,6 +69,29 @@ class AppServiceProvider extends ServiceProvider
             $app->make(ConnectorRegistry::class),
             (string) config('akstream.streaming.node_id', 'media-1'),
         ));
+    }
+
+    /**
+     * Until the installer has run there is no database, so session/cache/queue must not
+     * depend on one — otherwise /install itself fails with a connection error.
+     */
+    private function useDatabaseFreeDriversBeforeInstall(): void
+    {
+        if ($this->app->runningUnitTests() || file_exists(storage_path('app/installed.lock'))) {
+            return;
+        }
+
+        $config = $this->app['config'];
+
+        if ($config->get('session.driver') === 'database') {
+            $config->set('session.driver', 'file');
+        }
+        if ($config->get('cache.default') === 'database') {
+            $config->set('cache.default', 'file');
+        }
+        if ($config->get('queue.default') === 'database') {
+            $config->set('queue.default', 'sync');
+        }
     }
 
     public function boot(): void

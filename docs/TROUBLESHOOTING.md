@@ -53,3 +53,33 @@ Other causes of 403 on a correct document root:
 - `vendor/` missing → the app cannot boot. Run `composer install --no-dev --optimize-autoloader`, or upload `vendor/` from a machine that has composer.
 - `storage/` and `bootstrap/cache/` must be writable (`chmod -R 775`).
 - SELinux/ModSecurity on some hosts blocks `.htaccess` rewrites — ask the host to allow `AllowOverride All`.
+
+## "Failed to open stream: vendor/autoload.php ... No such file or directory"
+
+The PHP dependencies are not on the server. `vendor/` is intentionally **not** stored in git
+(tens of thousands of files). Install it in one of these ways:
+
+1. **On the server (best)** — SSH / aaPanel Terminal / cPanel Terminal:
+   ```bash
+   cd /www/wwwroot/rtmp.akdwk.in      # your application directory
+   composer install --no-dev --optimize-autoloader
+   ```
+   No composer? `curl -sS https://getcomposer.org/installer | php && php composer.phar install --no-dev --optimize-autoloader`
+
+2. **Upload a prepared `vendor/`** — build it on any machine with composer
+   (`composer install --no-dev --optimize-autoloader`), zip the `vendor` folder, upload it next to
+   `artisan` and extract. The folder must end up at `<app>/vendor/autoload.php`.
+
+3. After installing dependencies, clear stale caches: `php artisan optimize:clear`
+   (or delete `bootstrap/cache/*.php`).
+
+Do **not** build `vendor/` with `--classmap-authoritative`: the application's own `App\` classes are
+then not autoloadable if the classmap was generated without the app files present.
+
+## `/install` shows a database connection error on a brand-new upload
+
+Fixed in 1.0.0: before installation the application forces file-based session/cache drivers, and
+`.env.example` ships with `SESSION_DRIVER=file`, `CACHE_STORE=file`, `QUEUE_CONNECTION=sync`.
+The installer switches them to the database drivers once the database is configured and migrated.
+If you copied an older `.env`, set those three values back to file/file/sync, delete
+`storage/app/installed.lock` if present, and reload `/install`.
