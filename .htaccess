@@ -1,0 +1,34 @@
+###############################################################################
+# AK COMPUTER – ONE LIVE EVERYWHERE
+#
+# Fallback for hosts whose domain document root points at the PROJECT ROOT
+# instead of the (correct) public/ directory — the usual cPanel situation that
+# otherwise returns "403 Forbidden".
+#
+# PREFERRED: set the domain's Document Root to  <project>/public
+#            (cPanel → Domains → Manage → Document Root)
+# This file makes the app work either way.
+###############################################################################
+
+Options -Indexes
+
+# --- Hard denies that work even without mod_rewrite --------------------------
+<FilesMatch "^(\.env.*|\.git.*|\.htaccess|composer\.(json|lock)|package\.json|phpunit\.xml|artisan|VERSION|COMMIT|.*\.(sqlite|sql|log|enc|zip|md))$">
+    Require all denied
+</FilesMatch>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Never expose application internals
+    RewriteRule ^(app|bootstrap|config|database|resources|routes|scripts|storage|tests|vendor|docs|node_modules)(/|$) - [F,L]
+
+    # Send every request into public/
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+<IfModule !mod_rewrite.c>
+    # Without mod_rewrite, index.php below forwards to public/index.php
+    DirectoryIndex index.php
+</IfModule>

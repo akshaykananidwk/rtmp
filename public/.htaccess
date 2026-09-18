@@ -5,6 +5,9 @@
 
     RewriteEngine On
 
+    # Works both when DocumentRoot is this directory and when the project root
+    # .htaccess forwards requests here.
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

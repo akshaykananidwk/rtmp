@@ -26,3 +26,30 @@
 | Recording missing | `record_enabled` on key or Settings → Streaming; supervisor logs; disk space |
 | Session expired (419) on forms | cookie domain / `APP_URL` mismatch; `SESSION_SECURE_COOKIE=true` requires HTTPS |
 | E-mails not sent | Settings → E-mail (SMTP); `MAIL_MAILER` in `.env`; queue running |
+
+## "403 Forbidden – You don't have permission to access this resource" (Apache)
+
+The domain's **Document Root points at the project root** instead of `public/`, so Apache finds no
+index file. Three ways to fix it, best first:
+
+1. **Set the document root to `public/`** (recommended, most secure)
+   cPanel → *Domains* → the domain → *Manage* → Document Root → `.../rtmp/public` → Save.
+   DirectAdmin/Plesk have the same setting; on a VPS edit the vhost (`scripts/apache/akstream.conf`).
+
+2. **Use the shipped root `.htaccess` fallback** (already in the repository)
+   It rewrites every request into `public/` and denies `app/`, `config/`, `storage/`, `.env`, etc.
+   Requires `mod_rewrite` and `AllowOverride All` for the directory. Nothing else to configure —
+   just make sure `.htaccess` and `index.php` from the repository root were uploaded (hidden files
+   are easy to miss in FTP/File Manager: enable "show hidden files").
+
+3. **Move `public/` contents into `public_html/`**
+   Copy everything from `public/` into `public_html/`, then edit `public_html/index.php`:
+   `require __DIR__.'/../rtmp/vendor/autoload.php';` and
+   `$app = require_once __DIR__.'/../rtmp/bootstrap/app.php';`
+   Add `public_html` to *System → Updates → Protected paths* so updates never overwrite it.
+
+Other causes of 403 on a correct document root:
+- Wrong permissions: directories must be `755`, files `644` (`chmod -R 755 rtmp`), owner = the hosting user (not root).
+- `vendor/` missing → the app cannot boot. Run `composer install --no-dev --optimize-autoloader`, or upload `vendor/` from a machine that has composer.
+- `storage/` and `bootstrap/cache/` must be writable (`chmod -R 775`).
+- SELinux/ModSecurity on some hosts blocks `.htaccess` rewrites — ask the host to allow `AllowOverride All`.
