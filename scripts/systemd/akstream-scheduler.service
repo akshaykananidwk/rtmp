@@ -5,7 +5,7 @@ After=network.target
 [Service]
 User=www-data
 WorkingDirectory=/var/www/akstream/current
-ExecStart=/usr/bin/php artisan schedule:work
+ExecStart=/var/www/akstream/current/scripts/run-artisan.sh /usr/bin/php /var/www/akstream/current schedule:work
 Restart=always
 
 [Install]

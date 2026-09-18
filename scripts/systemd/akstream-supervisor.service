@@ -7,7 +7,7 @@ Wants=mediamtx.service
 User=www-data
 Group=www-data
 WorkingDirectory=/var/www/akstream/current
-ExecStart=/usr/bin/php artisan stream:supervisor --interval=2
+ExecStart=/var/www/akstream/current/scripts/run-artisan.sh /usr/bin/php /var/www/akstream/current stream:supervisor --interval=2
 Restart=always
 RestartSec=3
 KillSignal=SIGTERM

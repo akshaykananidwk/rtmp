@@ -6,7 +6,7 @@ After=network.target mysql.service redis.service
 User=www-data
 Group=www-data
 WorkingDirectory=/var/www/akstream/current
-ExecStart=/usr/bin/php artisan queue:work --sleep=2 --tries=3 --max-time=3600 --timeout=3600
+ExecStart=/var/www/akstream/current/scripts/run-artisan.sh /usr/bin/php /var/www/akstream/current queue:work --sleep=2 --tries=3 --max-time=3600 --timeout=3600
 Restart=always
 RestartSec=3
 

@@ -138,10 +138,23 @@ final class FfmpegRelayProcess
 
     public function lastError(): string
     {
-        $tail = trim($this->stderrTail);
-        $lines = array_values(array_filter(explode("\n", $tail)));
-        $msg = $lines ? end($lines) : ('ffmpeg exited with code '.($this->exitCode() ?? '?'));
+        $lines = array_values(array_unique(array_filter(
+            array_map('trim', explode("\n", $this->stderrTail)),
+            fn (string $line) => $line !== '',
+        )));
 
+        if ($lines === []) {
+            return SecretMasker::maskString('ffmpeg exited with code '.($this->exitCode() ?? '?'));
+        }
+
+        // FFmpeg prints the real reason first and a generic trailer last, e.g.
+        //   [rtmp @ …] Server error: NetStream.Play.StreamNotFound
+        //   Error opening input files: Input/output error
+        // Reporting only the last line threw away the part that identifies the fault.
+        $msg = implode(' | ', array_slice($lines, -3));
+
+        // The masker turns rtmp://host/live/<key> into rtmp://host/live/*** — keep it,
+        // because these lines quote the URL and must never expose a stream key.
         return SecretMasker::maskString(mb_substr($msg, 0, 500));
     }
 

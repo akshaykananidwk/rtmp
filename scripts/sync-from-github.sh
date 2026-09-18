@@ -149,6 +149,29 @@ else
   echo "      php artisan migrate --force && php artisan optimize:clear"
 fi
 
+chmod +x "$APP_DIR"/scripts/*.sh 2>/dev/null || true
+
+# Re-render the service units when they changed (they now launch through run-artisan.sh,
+# which re-enables the functions PHP needs for THIS process only, leaving php.ini alone).
+UNITS_CHANGED=0
+for unit in akstream-supervisor akstream-queue akstream-scheduler; do
+  src="$APP_DIR/scripts/systemd/$unit.service"
+  dst="/etc/systemd/system/$unit.service"
+  [[ -f "$src" && -f "$dst" ]] || continue
+  php_bin="$(grep -oP '(?<=^ExecStart=)\S+' "$dst" | head -1)"
+  [[ "$php_bin" == *run-artisan.sh ]] && php_bin="$(awk '/^ExecStart=/{print $2; exit}' "$dst")"
+  [[ -n "$php_bin" && -x "$php_bin" ]] || php_bin="$PHPBIN"
+  rendered="$(sed -e "s#/var/www/akstream/current#$APP_DIR#g" -e "s#/usr/bin/php#$php_bin#g" \
+      -e "s#^User=www-data#User=$OWNER#" -e "s#^Group=www-data#Group=$OWNER#" "$src")"
+  if [[ "$rendered" != "$(cat "$dst")" ]]; then
+    cp -a "$dst" "$dst.bak-$(date +%Y%m%d-%H%M%S)"
+    printf '%s\n' "$rendered" > "$dst"
+    UNITS_CHANGED=1
+    echo "==> Updated service unit $unit (previous kept as $dst.bak-*)"
+  fi
+done
+[[ "$UNITS_CHANGED" == 1 ]] && systemctl daemon-reload
+
 for unit in akstream-supervisor akstream-queue; do
   if systemctl is-enabled --quiet "$unit" 2>/dev/null; then
     systemctl restart "$unit" 2>/dev/null && echo "==> Restarted $unit" || echo "!!  Could not restart $unit"
