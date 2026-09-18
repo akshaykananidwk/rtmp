@@ -22,7 +22,7 @@ return new class extends Migration
             }
         }
 
-        (new RoleSeeder())->run();
+        (new RoleSeeder)->run();
     }
 
     public function down(): void
