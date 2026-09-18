@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Domain\Streaming\Relay\RelaySupervisor;
+use App\Domain\Streaming\Relay\SupervisorRequirements;
 use App\Domain\Streaming\SupervisorStatus;
 use Illuminate\Console\Command;
 
@@ -18,10 +19,31 @@ class StreamSupervisorCommand extends Command
 
     public function handle(RelaySupervisor $supervisor): int
     {
-        if (function_exists('pcntl_async_signals')) {
+        // Check before touching anything: a disabled function here is a fatal error that
+        // systemd would retry forever, leaving only "pending" destinations as the symptom.
+        if ($blockers = SupervisorRequirements::blockers()) {
+            foreach ($blockers as $blocker) {
+                $this->error($blocker);
+            }
+            SupervisorStatus::recordBlockers($blockers);
+
+            return self::FAILURE;
+        }
+
+        SupervisorStatus::recordBlockers([]);
+
+        foreach (SupervisorRequirements::warnings() as $warning) {
+            $this->warn($warning);
+        }
+
+        // Every piece is checked, including the constants: pcntl_async_signals can be allowed
+        // while pcntl_signal is disabled, and calling it then kills the supervisor outright.
+        if (SupervisorRequirements::canHandleSignals()) {
             pcntl_async_signals(true);
             pcntl_signal(SIGTERM, fn () => $this->shouldStop = true);
-            pcntl_signal(SIGINT, fn () => $this->shouldStop = true);
+            if (defined('SIGINT')) {
+                pcntl_signal(SIGINT, fn () => $this->shouldStop = true);
+            }
         }
 
         $this->info('Relay supervisor started on node '.$supervisor->nodeId());

@@ -39,6 +39,31 @@ final class SupervisorStatus
         Cache::put(self::SHARED_KEY, ['node' => $nodeId, 'at' => $at], $ttl);
     }
 
+    public const BLOCKERS_KEY = 'stream:supervisor:blockers';
+
+    /**
+     * Record why the supervisor refused to start, so the panel can show the real reason.
+     *
+     * The web server runs a different PHP process — often with a different php.ini — so it
+     * cannot reliably work this out for itself; only the CLI process knows what it hit.
+     *
+     * @param  string[]  $blockers
+     */
+    public static function recordBlockers(array $blockers): void
+    {
+        $blockers === []
+            ? Cache::forget(self::BLOCKERS_KEY)
+            : Cache::put(self::BLOCKERS_KEY, array_values($blockers), 3600);
+    }
+
+    /** @return string[] */
+    public function blockers(): array
+    {
+        $stored = Cache::get(self::BLOCKERS_KEY);
+
+        return is_array($stored) ? array_values(array_filter($stored, 'is_string')) : [];
+    }
+
     /** Unix timestamp of the most recent pass, or null if it has never run (or the cache was cleared). */
     public function lastBeatAt(): ?int
     {
@@ -78,6 +103,11 @@ final class SupervisorStatus
     {
         if ($this->isRunning()) {
             return null;
+        }
+
+        // If it told us why it gave up, that beats guessing from the missing heartbeat.
+        if ($blockers = $this->blockers()) {
+            return implode(' ', $blockers);
         }
 
         $since = $this->secondsSinceBeat();

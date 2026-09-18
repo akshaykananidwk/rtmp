@@ -77,6 +77,14 @@ foreach (App\Models\StreamSessionDestination::withoutGlobalScopes()->whereHas("s
 echo "  (a destination stuck at status=pending with no supervisor beat means the supervisor is down:"
 echo "   sudo systemctl start akstream-supervisor)"
 
+hr "SUPERVISOR REQUIREMENTS"
+sudo -u "$WEBU" "$PHPBIN" artisan tinker --execute='
+use App\Domain\Streaming\Relay\SupervisorRequirements as R;
+echo "blocked functions: ", implode(", ", R::missingRequired()) ?: "none", "\n";
+echo "signal handling  : ", R::canHandleSignals() ? "ok" : "off (".(implode(", ", R::missingOptional()) ?: "SIGTERM missing").")", "\n";
+foreach (R::blockers() as $b) { echo "BLOCKER: ", $b, "\n"; }' 2>/dev/null | tail -6
+echo "  (CLI php.ini is what matters here, not the web one)"
+
 hr "FFMPEG"
 if command -v ffmpeg >/dev/null 2>&1; then
   echo "  ffmpeg: $(command -v ffmpeg) ($(ffmpeg -version 2>/dev/null | head -1))"

@@ -69,7 +69,7 @@ class SupervisorStatusTest extends TestCase
         $result = $check->run();
         $this->assertSame('fail', $result->status);
         $this->assertStringContainsString('1 destination(s) are waiting', $result->message);
-        $this->assertStringContainsString('systemctl start akstream-supervisor', $result->message);
+        $this->assertStringContainsString('systemctl restart akstream-supervisor', $result->message);
 
         SupervisorStatus::beat('media-1');
         $this->assertSame('pass', $check->run()->status);
@@ -85,5 +85,38 @@ class SupervisorStatusTest extends TestCase
 
         SupervisorStatus::beat('media-1');
         $this->getJson('/admin/dashboard/status')->assertOk()->assertJsonPath('supervisor.ok', true)->assertJsonPath('supervisor.problem', null);
+    }
+
+    public function test_the_supervisor_refuses_to_start_and_says_why_when_ffmpeg_is_missing(): void
+    {
+        config(['akstream.streaming.ffmpeg' => '/nonexistent/ffmpeg-'.uniqid()]);
+
+        $this->artisan('stream:supervisor', ['--once' => true])->assertFailed();
+
+        $status = app(SupervisorStatus::class);
+        $this->assertFalse($status->isRunning(), 'a refused start records no heartbeat');
+        $this->assertNotEmpty($status->blockers());
+        $this->assertStringContainsString('FFmpeg', (string) $status->problem());
+    }
+
+    public function test_the_panel_shows_the_reason_the_supervisor_gave(): void
+    {
+        [$tenant, $user] = $this->adminSetup();
+        $this->actingAs($user);
+
+        SupervisorStatus::recordBlockers(['PHP cannot start FFmpeg: proc_open is disabled.']);
+
+        $this->getJson('/admin/dashboard/status')->assertOk()
+            ->assertJsonPath('supervisor.ok', false)
+            ->assertJsonPath('supervisor.problem', 'PHP cannot start FFmpeg: proc_open is disabled.');
+
+        $this->get('/admin/live')->assertOk()->assertSee('proc_open is disabled');
+
+        $result = app(SupervisorCheck::class)->run();
+        $this->assertStringContainsString('proc_open is disabled', $result->message);
+
+        // A clean start clears it, so a fixed server stops nagging.
+        SupervisorStatus::recordBlockers([]);
+        $this->assertSame([], app(SupervisorStatus::class)->blockers());
     }
 }

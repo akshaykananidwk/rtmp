@@ -56,8 +56,9 @@ class SupervisorCheck implements HealthCheckInterface
         }
 
         $details['destinations_waiting'] = $waiting;
+        $details['blockers'] = $this->status->blockers();
         $message = ($this->status->problem() ?? 'The relay supervisor is not running.')
-            .' Start it with: systemctl start akstream-supervisor';
+            .' Then: systemctl restart akstream-supervisor';
 
         // Stuck destinations mean it is failing right now, not merely idle.
         return $waiting > 0
