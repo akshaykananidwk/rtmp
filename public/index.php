@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Preflight;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 
@@ -12,6 +13,9 @@ if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php'))
 
 // Register the Composer autoloader...
 require __DIR__.'/../vendor/autoload.php';
+
+// Create .env / storage on a freshly uploaded copy so the installer is reachable.
+Preflight::run(dirname(__DIR__));
 
 // Bootstrap Laravel and handle the request...
 /** @var Application $app */

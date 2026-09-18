@@ -83,3 +83,24 @@ Fixed in 1.0.0: before installation the application forces file-based session/ca
 The installer switches them to the database drivers once the database is configured and migrated.
 If you copied an older `.env`, set those three values back to file/file/sync, delete
 `storage/app/installed.lock` if present, and reload `/install`.
+
+## Blank "HTTP ERROR 500" with no message
+
+PHP is hiding the error (`display_errors=Off`). Open **`https://your-domain/diagnose.php`** — a
+standalone page that does not boot the framework and reports PHP version, extensions, `vendor/`,
+`.env`, `APP_KEY`, directory permissions, ownership, stale caches and the last log lines (secrets
+removed). Fix every red row and reload.
+
+Most common causes, in order:
+
+1. **`.env` missing.** Git never stores it. Since 1.0.0 the application creates it from
+   `.env.example` and generates `APP_KEY` on the first request (`App\Support\Preflight`), so this
+   only remains an error when the application directory is not writable — `chmod 755 <app-dir>` and
+   set the owner to the web-server user (`www` on aaPanel, `www-data` on Ubuntu, your cPanel user on cPanel).
+2. **`storage/` or `bootstrap/cache/` not writable** → `chmod -R 775 storage bootstrap/cache`.
+3. **Stale compiled caches** after changing dependencies → delete `bootstrap/cache/*.php`.
+4. **`vendor/` missing or incomplete** → see the autoload section above.
+5. Wrong PHP version selected for the domain (needs 8.2+).
+
+To see the real message temporarily, set `APP_DEBUG=true` in `.env`, reload, then set it back to
+`false` — never leave debug on in production.

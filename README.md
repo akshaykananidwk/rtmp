@@ -74,6 +74,9 @@ php artisan serve
 
 Or open `http://localhost:8000/install` for the guided installer.
 
+If the site returns a blank 500 on a new server, open `/diagnose.php` — a standalone page that
+reports PHP, extensions, `vendor/`, `.env`, permissions and ownership without booting the framework.
+
 ## Tests
 
 ```bash
